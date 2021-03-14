@@ -1,0 +1,4 @@
+aws-cdk.core
+aws-cdk.aws-ec2
+aws_cdk.aws_logs
+aws_cdk.aws_certificatemanager
