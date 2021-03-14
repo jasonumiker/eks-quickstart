@@ -310,6 +310,50 @@ class EKSClusterStack(core.Stack):
         # Attach the necessary permissions
         awsebscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsebscsidriver_policy_statement_json_1))
 
+        # AWS EFS CSI Driver
+        awsefscsidriver_service_account = eks_cluster.add_service_account(
+            "awsefscsidriver",
+            name="awsefscsidriver",
+            namespace="cluster-addons"
+        )
+
+        # Create the PolicyStatements to attach to the role
+        awsebscsidriver_policy_statement_json_1 = {
+            "Effect": "Allow",
+            "Action": [
+                "elasticfilesystem:DescribeAccessPoints",
+                "elasticfilesystem:DescribeFileSystems"
+            ],
+            "Resource": "*"
+        }
+        awsebscsidriver_policy_statement_json_2 = {
+            "Effect": "Allow",
+            "Action": [
+                "elasticfilesystem:CreateAccessPoint"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringLike": {
+                "aws:RequestTag/efs.csi.aws.com/cluster": "true"
+                }
+            }
+        }
+        awsebscsidriver_policy_statement_json_3 = {
+            "Effect": "Allow",
+            "Action": "elasticfilesystem:DeleteAccessPoint",
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                "aws:ResourceTag/efs.csi.aws.com/cluster": "true"
+                }
+            }
+        }
+
+        # Attach the necessary permissions
+        awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_1))
+        awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_2))
+        awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_3))
+
         # cluster-autoscaler
         clusterautoscaler_service_account = eks_cluster.add_service_account(
             "clusterautoscaler",
@@ -569,6 +613,25 @@ class EKSClusterStack(core.Stack):
                     "snapshot": {
                         "create": False,
                         "name": "awsebscsidriver"
+                    }
+                }
+            }
+        )
+
+        # Install the AWS EFS CSI Driver
+        # For more info see https://github.com/kubernetes-sigs/aws-efs-csi-driver
+        awsefscsichart = eks_cluster.add_helm_chart(
+            "aws-efs-csi-driver",
+            chart="aws-efs-csi-driver",
+            version="1.1.1",
+            release="awsefscsidriver-1-1-1",
+            repository="https://github.com/kubernetes-sigs/aws-efs-csi-driver",
+            namespace="cluster-addons",
+            values={
+                "serviceAccount": {
+                    "controller": {
+                        "create": False,
+                        "name": "awsefscsidriver"
                     }
                 }
             }
