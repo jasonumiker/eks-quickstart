@@ -23,6 +23,8 @@ This project is an example of how you can combine the AWS Cloud Development Kit 
 
 ### Why Cloud Development Kit (CDK)?
 
+TODO: Explain the benefits of the CDK
+
 ## Getting started
 
 ### Install Local Prerequisites
@@ -30,6 +32,12 @@ There are some prerequsistes you likely will need to install on the machine doin
 
 #### Ubuntu 20.04.2 LTS (including via Windows 10's WSL)
 Run `sudo ./ubuntu-prepreqs.sh`
+
+#### Mac
+TODO: Make equivilent bootstrap script to get a Mac
+
+#### Amazon Linux 2 / Cloud9
+TODO: Make an equivilent boostrap script for Amazon Linux 2 including Cloud 9
 
 ### Deploy the VPC and EKS cluster with frequntly used add-ons
 
