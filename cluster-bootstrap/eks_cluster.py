@@ -318,7 +318,7 @@ class EKSClusterStack(core.Stack):
         )
 
         # Create the PolicyStatements to attach to the role
-        awsebscsidriver_policy_statement_json_1 = {
+        awsefscsidriver_policy_statement_json_1 = {
             "Effect": "Allow",
             "Action": [
                 "elasticfilesystem:DescribeAccessPoints",
@@ -326,7 +326,7 @@ class EKSClusterStack(core.Stack):
             ],
             "Resource": "*"
         }
-        awsebscsidriver_policy_statement_json_2 = {
+        awsefscsidriver_policy_statement_json_2 = {
             "Effect": "Allow",
             "Action": [
                 "elasticfilesystem:CreateAccessPoint"
@@ -338,7 +338,7 @@ class EKSClusterStack(core.Stack):
                 }
             }
         }
-        awsebscsidriver_policy_statement_json_3 = {
+        awsefscsidriver_policy_statement_json_3 = {
             "Effect": "Allow",
             "Action": "elasticfilesystem:DeleteAccessPoint",
             "Resource": "*",
