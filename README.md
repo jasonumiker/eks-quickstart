@@ -34,7 +34,10 @@ There are some prerequsistes you likely will need to install on the machine doin
 Run `sudo ./ubuntu-prepreqs.sh`
 
 #### Mac
-TODO: Make equivilent bootstrap script to get a Mac
+
+1. Install Homebrew (https://brew.sh/)
+1. Run `./mac-prereqs.sh`
+1. Edit your `~/.zshrc` and/or your `~/.bash_profile` to put /usr/local/bin at the start of your PATH statement so that the brew things installed take precendence over the built-in often outdated options like python2.
 
 #### Amazon Linux 2 / Cloud9
 TODO: Make an equivilent boostrap script for Amazon Linux 2 including Cloud 9
