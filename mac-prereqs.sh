@@ -1,3 +1,6 @@
+# First install Homebrew if you don't have it already with a:
+# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
 # Install python - note you'll need to put /usr/local/bin higher in your PATH
 # in .zschrc or .bash_profile instead of the built-in python2 in /usr/bin
 brew install python
