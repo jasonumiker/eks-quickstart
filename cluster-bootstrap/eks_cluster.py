@@ -625,7 +625,7 @@ class EKSClusterStack(core.Stack):
             chart="aws-efs-csi-driver",
             version="1.1.1",
             release="awsefscsidriver-1-1-1",
-            repository="https://github.com/kubernetes-sigs/aws-efs-csi-driver",
+            repository="https://kubernetes-sigs.github.io/aws-efs-csi-driver/",
             namespace="cluster-addons",
             values={
                 "serviceAccount": {
