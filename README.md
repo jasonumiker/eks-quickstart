@@ -36,7 +36,8 @@ To use the CodeBuild CloudFormation Teplate
 1. Edit `cluster-codebuild/EKSCodeBuildStack.template.json` to change Location to your GitHub repo/path
 1. Run `aws codebuild import-source-credentials --server-type GITHUB --auth-type PERSONAL_ACCESS_TOKEN --token <token_value>` to provide your token to CodeBuild
 1. Deploy `cluster-codebuild/EKSCodeBuildStack.template.json`
-1. Go to the CodeBuild console, click on the 
+1. Go to the CodeBuild console, click on the Build project that starts with `EKSCodeBuild`, and then click the Start build button.
+1. (Optional) You can click the Tail logs button to follow along with the build process
 
 ### Getting started from your laptop
 There are some prerequsistes you likely will need to install on the machine doing your environment bootstrapping including Node, Python, the AWS CLI, the CDK, fluxctl and Helm
