@@ -3,6 +3,9 @@ Purpose
 
 Example of a CodeBuild GitOps pattern where merging a change to the eks_cluster.py will trigger a
 CodeBuild to invoke a cdk deploy of that change.
+
+To provide GitHub credentials run:
+aws codebuild import-source-credentials --server-type GITHUB --auth-type PERSONAL_ACCESS_TOKEN --token <token_value>
 """
 
 from aws_cdk import (
@@ -20,7 +23,7 @@ class EKSCodeBuildStack(core.Stack):
         # Create IAM Role For CodeBuild
         # TODO Make this role's policy least privilege
         aws_app_resources_build_role = iam.Role(
-            self, "AWSAppResourcesBuildRole",
+            self, "EKSCodeBuildRole",
             assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name("AdministratorAccess")
@@ -39,7 +42,7 @@ class EKSCodeBuildStack(core.Stack):
 
         # Create CodeBuild
         build_project = codebuild.Project(
-            self, "AWSAppResourcesBuildProject",
+            self, "EKSCodeBuild",
             source=git_hub_source,
             role=aws_app_resources_build_role,
             environment=codebuild.BuildEnvironment(
@@ -52,7 +55,5 @@ class EKSCodeBuildStack(core.Stack):
 app = core.App()
 # Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that
 # it won't let us create 3 AZs and will only create a max of 2 - even when we ask for 3 in eks_vpc
-eks_codebuild_stack = EKSCodeBuildStack(app, "EKSCodeBuildStack", env=core.Environment(
-    account=os.environ.get("CDK_DEPLOY_ACCOUNT", os.environ["CDK_DEFAULT_ACCOUNT"]),
-    region=os.environ.get("CDK_DEPLOY_REGION", os.environ["CDK_DEFAULT_REGION"])))
+eks_codebuild_stack = EKSCodeBuildStack(app, "EKSCodeBuildStack")
 app.synth()

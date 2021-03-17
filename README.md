@@ -27,7 +27,18 @@ TODO: Explain the benefits of the CDK
 
 ## Getting started
 
-### Install Local Prerequisites
+You can either deploy this from your machine or leverge CodeBuild. 
+
+### Getting started with CodeBuild
+To use the CodeBuild CloudFormation Teplate
+
+1. Generate a personal access token on GitHub - https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token 
+1. Edit `cluster-codebuild/EKSCodeBuildStack.template.json` to change Location to your GitHub repo/path
+1. Run `aws codebuild import-source-credentials --server-type GITHUB --auth-type PERSONAL_ACCESS_TOKEN --token <token_value>` to provide your token to CodeBuild
+1. Deploy `cluster-codebuild/EKSCodeBuildStack.template.json`
+1. Go to the CodeBuild console, click on the 
+
+### Getting started from your laptop
 There are some prerequsistes you likely will need to install on the machine doing your environment bootstrapping including Node, Python, the AWS CLI, the CDK, fluxctl and Helm
 
 #### Ubuntu 20.04.2 LTS (including via Windows 10's WSL)
@@ -38,9 +49,6 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. Install Homebrew (https://brew.sh/)
 1. Run `./mac-prereqs.sh`
 1. Edit your `~/.zshrc` and/or your `~/.bash_profile` to put /usr/local/bin at the start of your PATH statement so that the brew things installed take precendence over the built-in often outdated options like python2.
-
-#### Amazon Linux 2 / Cloud9
-TODO: Make an equivilent boostrap script for Amazon Linux 2 including Cloud 9
 
 ### Deploy the VPC and EKS cluster with frequntly used add-ons
 
