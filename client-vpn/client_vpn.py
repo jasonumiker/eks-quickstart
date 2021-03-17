@@ -42,7 +42,7 @@ class ClientVPNStack(core.Stack):
                     "clientRootCertificateChainArn": client_cert.certificate_arn
                 }
             }],
-            client_cidr_block="10.2.0.0/22",
+            client_cidr_block="10.1.0.0/22",
             server_certificate_arn=server_cert.certificate_arn,
             connection_log_options={
                 "enabled": True,

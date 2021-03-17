@@ -23,12 +23,12 @@ class EKSClusterStack(core.Stack):
         # Either creat a new IAM role to administrate the cluster or create a new one
         # If you'd prefer to use an existing role for this comment out the first block 
         # and then uncomment the one underneath filling in the role's ARN
-        #cluster_admin_role = iam.Role(self, "ClusterAdminRole",
-        #    assumed_by=iam.CompositePrincipal(iam.AccountRootPrincipal())
-        #)   
-        cluster_admin_role = iam.Role.from_role_arn(self, "ClusterAdminRole",
-            role_arn="arn:aws:iam::505070718513:role/IsenAdminRole"
-        )
+        cluster_admin_role = iam.Role(self, "ClusterAdminRole",
+            assumed_by=iam.CompositePrincipal(iam.AccountRootPrincipal())
+        )   
+        #cluster_admin_role = iam.Role.from_role_arn(self, "ClusterAdminRole",
+        #    role_arn="arn:aws:iam::505070718513:role/IsenAdminRole"
+        #)
     
         # Either create a new VPC with the options below OR import an existing one by name:
         # To import an existing one comment out the first eks_vpc block out then un-comment 

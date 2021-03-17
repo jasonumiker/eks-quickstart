@@ -29,7 +29,7 @@ TODO: Explain the benefits of the CDK
 
 You can either deploy this from your machine or leverge CodeBuild. 
 
-### Getting started with CodeBuild
+###  Prerequisites - CodeBuild option
 To use the CodeBuild CloudFormation Teplate
 
 1. Generate a personal access token on GitHub - https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token 
@@ -39,7 +39,7 @@ To use the CodeBuild CloudFormation Teplate
 1. Go to the CodeBuild console, click on the Build project that starts with `EKSCodeBuild`, and then click the Start build button.
 1. (Optional) You can click the Tail logs button to follow along with the build process
 
-### Getting started from your laptop
+### Prerequisites - Bootstrap from your laptop
 There are some prerequsistes you likely will need to install on the machine doing your environment bootstrapping including Node, Python, the AWS CLI, the CDK, fluxctl and Helm
 
 #### Ubuntu 20.04.2 LTS (including via Windows 10's WSL)
@@ -59,6 +59,7 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. Run `pip install -r requirements.txt` to install the required Python bits of the CDK
 1. Run `export CDK_DEPLOY_REGION=ap-southeast-2` replacing ap-southeast-2 with your region of choice
 1. Run `export CDK_DEPLOY_ACCOUNT=123456789123` replacing 123456789123 with your AWS account number
+1. (Optional) If you want to make an existing IAM User or Role the cluster admin rather than creating a new one then edit `eks_cluster.py` and comment out the curernt cluster_admin_role and uncomment the one beneath it and fill in the ARN of the User/Role you'd like there.
 1. (Only required the first time you use the CDK in this account) Run `cdk bootstrap` to create the S3 bucket where it puts the CDK puts its artifacts
 1. (Only required the first time ES in VPC mode is used in this account) Run `aws iam create-service-linked-role --aws-service-name es.amazonaws.com`
 1. Run `cdk deploy --require-approval never`
