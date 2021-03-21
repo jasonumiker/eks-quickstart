@@ -67,27 +67,11 @@ Run `sudo ./ubuntu-prepreqs.sh`
 
 ## Deploy and set up a Bastion based on an EC2 instance running Code Server (which is like VS Code running in your browser) (https://github.com/cdr/code-server)
 
-TODO: Provide instructions
+TODO: Provide instructions on how to connect to and use the Bastion
 
 ## Set up your Client VPN to access the environment
 
-1. Create the necessary keys and upload them to ACM as per https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
-1. Run `cd client-vpn`
-1. Edit `client_vpn.py` and put the ARNs for your client and server certs as well as the `client_cidr_block` and `target_network_cidr` if required
-1. Run `pip install -r requirements.txt`
-1. Run `cdk deploy --require-approval never`
-1. Go to the Client VPN Endpoints Service in the AWS Console
-1. Go to the Associations Tab and click Associate
-1. Pick the EKSClusterStack/VPC for the VPC
-1. Pick any subnet in the Choose a subnet to associate dropdown box
-1. Click the Associate button
-1. Go to the Security Groups tab
-1. Click the Apply Security Groups button
-1. Tick the box next to the security group whose Group Name starts with `eks-cluster-sg-clusterXXXXXXX...` (this is the SG that has access to the EKS Control Plane private endpoints)
-1. Click Apply Security Groups
-
-
-TODO: Complete/improve the VPN instructions including how to set up the client
+TODO: Provide instructions on how to configure the client
 
 ## Allow access to the Elasticsearch and Kibana to query your logs
 

@@ -11,6 +11,8 @@ from aws_cdk import (
     aws_eks as eks,
     aws_iam as iam,
     aws_elasticsearch as es,
+    aws_logs as logs,
+    aws_certificatemanager as cm,  
     core
 )
 import os
@@ -18,6 +20,17 @@ import os
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
 # The preferred option is to use a Client VPN instead so this defaults to False
 deploy_bastion = True
+
+# Deploy Client VPN?
+deploy_client_vpn = True
+
+# If VPN = True then create and upload your client and server certs as per putting the ARNs below
+# https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
+client_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/6b85eefd-56b3-4461-8dda-19613170ba2d"
+server_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/9b30b41a-89a1-416b-b2d2-bc76c26e9f15"
+
+# CIDR Block for VPN Clients (has to be at least a /22)
+vpn_client_cidr_block="10.1.0.0/22"
 
 # Create a new VPC for the cluster?
 # If you set this to False then specify the VPC name to use below
@@ -801,6 +814,64 @@ class EKSClusterStack(core.Stack):
             code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
             code_server_instance.user_data.add_commands("chmod +x ./kubectl")
             code_server_instance.user_data.add_commands("mv ./kubectl /usr/local/bin")
+            
+            # Output the Bastion adddress
+            core.CfnOutput(
+                self, "BastionAddress",
+                value="http://"+code_server_instance.instance_public_ip+":8080",
+                description="Address to reach your Bastion's VS Code Web UI",
+            )
+        
+        if (deploy_client_vpn is True):
+            # Create and upload your client and server certs as per https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
+            # And then put the ARNs for them into the items below
+            client_cert = cm.Certificate.from_certificate_arn(
+                self, "ClientCert",
+                certificate_arn=client_certificate_arn)
+            server_cert = cm.Certificate.from_certificate_arn(
+                self, "ServerCert",
+                certificate_arn=server_certificate_arn)
+
+            # Create CloudWatch Log Group and Stream and keep the logs for 1 month
+            log_group = logs.LogGroup(
+                self, "VPNLogGroup",
+                retention=logs.RetentionDays.ONE_MONTH
+            )
+            log_stream = log_group.add_stream("VPNLogStream")
+
+            endpoint = ec2.CfnClientVpnEndpoint(
+                self, "VPNEndpoint",
+                description="EKS Client VPN",
+                authentication_options=[{
+                    "type": "certificate-authentication",
+                    "mutualAuthentication": {
+                        "clientRootCertificateChainArn": client_cert.certificate_arn
+                    }
+                }],
+                client_cidr_block=vpn_client_cidr_block,
+                server_certificate_arn=server_cert.certificate_arn,
+                connection_log_options={
+                    "enabled": True,
+                    "cloudwatchLogGroup": log_group.log_group_name,
+                    "cloudwatchLogStream": log_stream.log_stream_name
+                },
+                split_tunnel=True,
+                security_group_ids=[eks_cluster.cluster_security_group_id]
+            )
+
+            ec2.CfnClientVpnAuthorizationRule(
+                self, "ClientVpnAuthRule",
+                client_vpn_endpoint_id=endpoint.ref,
+                target_network_cidr=eks_vpc.vpc_cidr_block,
+                authorize_all_groups=True,
+                description="Authorize the Client VPN access to our VPC CIDR"
+            )
+
+            ec2.CfnClientVpnTargetNetworkAssociation(
+                self, "ClientVpnNetworkAssociation",
+                client_vpn_endpoint_id=endpoint.ref,
+                subnet_id=eks_vpc.private_subnets[0].subnet_id
+            )
 
 app = core.App()
 # Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that
