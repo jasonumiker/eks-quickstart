@@ -46,7 +46,7 @@ class EKSClusterStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # Either creat a new IAM role to administrate the cluster or create a new one
+        # Either create a new IAM role to administrate the cluster or create a new one
         if (create_new_cluster_admin_role is True):
             cluster_admin_role = iam.Role(self, "ClusterAdminRole",
                 assumed_by=iam.CompositePrincipal(
@@ -54,6 +54,14 @@ class EKSClusterStack(core.Stack):
                     iam.ServicePrincipal("ec2.amazonaws.com")
                 )
             )
+            cluster_admin_policy_statement_json_1 = {
+                "Effect": "Allow",
+                "Action": [
+                    "eks:DescribeCluster"
+                ],
+                "Resource": "*"
+            }
+            cluster_admin_role.add_to_policy(iam.PolicyStatement.from_json(cluster_admin_policy_statement_json_1))
         else:
             cluster_admin_role = iam.Role.from_role_arn(self, "ClusterAdminRole",
                 role_arn=existing_role_arn
