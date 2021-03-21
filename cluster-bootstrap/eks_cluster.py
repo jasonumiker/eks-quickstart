@@ -856,7 +856,8 @@ class EKSClusterStack(core.Stack):
                     "cloudwatchLogStream": log_stream.log_stream_name
                 },
                 split_tunnel=True,
-                security_group_ids=[eks_cluster.cluster_security_group_id]
+                security_group_ids=[eks_cluster.cluster_security_group_id],
+                vpc_id=eks_vpc.vpc_id
             )
 
             ec2.CfnClientVpnAuthorizationRule(
