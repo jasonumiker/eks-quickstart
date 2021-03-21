@@ -15,49 +15,78 @@ from aws_cdk import (
 )
 import os
 
+# Set this to True in order to deploy a Bastion host to access your new cluster/environment
+# The preferred option is to use a Client VPN instead so this defaults to False
+deploy_bastion = True
+
+# Create a new VPC for the cluster?
+# If you set this to False then specify the VPC name to use below
+create_new_vpc = True
+
+# Set this to the CIDR for your new VPC
+vpc_cidr="10.0.0.0/22"
+
+# Set this to the CIDR mask/size for your public subnets
+vpc_cidr_mask_public=26
+
+# Set this to the CIDR mask/size for your private subnets
+vpc_cidr_mask_private=24
+
+# If create_new_vpc is False then enter the name of the existing VPC to use
+existing_vpc_name="VPC"
+
+# Create a new role as the inital admin for the cluster?
+create_new_cluster_admin_role = True
+
+# If create_new_cluster_admin_role is False then provide the ARN of the existing role to use
+existing_role_arn="arn:aws:iam::123456789123:role/RoleName"
+
 class EKSClusterStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # Either creat a new IAM role to administrate the cluster or create a new one
-        # If you'd prefer to use an existing role for this comment out the first block 
-        # and then uncomment the one underneath filling in the role's ARN
-        cluster_admin_role = iam.Role(self, "ClusterAdminRole",
-            assumed_by=iam.CompositePrincipal(iam.AccountRootPrincipal())
-        )   
-        #cluster_admin_role = iam.Role.from_role_arn(self, "ClusterAdminRole",
-        #    role_arn="arn:aws:iam::505070718513:role/IsenAdminRole"
-        #)
-    
-        # Either create a new VPC with the options below OR import an existing one by name:
-        # To import an existing one comment out the first eks_vpc block out then un-comment 
-        # the following one and change the vpc_name to match the name of the VPC you'd like to use
-        eks_vpc = ec2.Vpc(
-            self, "VPC",
-            # We are choosing to spread our VPC across 3 availability zones
-            max_azs=3,
-            # We are creating a VPC that has a /22, 1024 IPs, for our EKS cluster.
-            # I am using that instead of a /16 etc. as I know many companies have constraints here
-            # If you can go bigger than this great - but I would try not to go much smaller if you can
-            # I use https://www.davidc.net/sites/default/subnets/subnets.html to me work out the CIDRs
-            cidr="10.0.0.0/22",
-            subnet_configuration=[
-                # 3 x Public Subnets (1 per AZ) with 64 IPs each for our ALBs and NATs
-                ec2.SubnetConfiguration(
-                    subnet_type=ec2.SubnetType.PUBLIC,
-                    name="Public",
-                    cidr_mask=26
-                ), 
-                # 3 x Private Subnets (1 per AZ) with 256 IPs each for our Nodes and Pods
-                ec2.SubnetConfiguration(
-                    subnet_type=ec2.SubnetType.PRIVATE,
-                    name="Private",
-                    cidr_mask=24
+        if (create_new_cluster_admin_role is True):
+            cluster_admin_role = iam.Role(self, "ClusterAdminRole",
+                assumed_by=iam.CompositePrincipal(
+                    iam.AccountRootPrincipal(),
+                    iam.ServicePrincipal("ec2.amazonaws.com")
                 )
-            ]
-        )   
-        #eks_vpc = ec2.Vpc.from_lookup(self, 'VPC', vpc_name="VPC")
+            )
+        else:
+            cluster_admin_role = iam.Role.from_role_arn(self, "ClusterAdminRole",
+                role_arn=existing_role_arn
+            )
+    
+        # Either create a new VPC with the options below OR import an existing one by name
+        if (create_new_vpc is True):
+            eks_vpc = ec2.Vpc(
+                self, "VPC",
+                # We are choosing to spread our VPC across 3 availability zones
+                max_azs=3,
+                # We are creating a VPC that has a /22, 1024 IPs, for our EKS cluster.
+                # I am using that instead of a /16 etc. as I know many companies have constraints here
+                # If you can go bigger than this great - but I would try not to go much smaller if you can
+                # I use https://www.davidc.net/sites/default/subnets/subnets.html to me work out the CIDRs
+                cidr=vpc_cidr,
+                subnet_configuration=[
+                    # 3 x Public Subnets (1 per AZ) with 64 IPs each for our ALBs and NATs
+                    ec2.SubnetConfiguration(
+                        subnet_type=ec2.SubnetType.PUBLIC,
+                        name="Public",
+                        cidr_mask=vpc_cidr_mask_public
+                    ), 
+                    # 3 x Private Subnets (1 per AZ) with 256 IPs each for our Nodes and Pods
+                    ec2.SubnetConfiguration(
+                        subnet_type=ec2.SubnetType.PRIVATE,
+                        name="Private",
+                        cidr_mask=vpc_cidr_mask_private
+                    )
+                ]
+            )   
+        else:
+            eks_vpc = ec2.Vpc.from_lookup(self, 'VPC', vpc_name=existing_vpc_name)
 
         # Create an EKS Cluster
         eks_cluster = eks.Cluster(
@@ -74,17 +103,6 @@ class EKSClusterStack(core.Stack):
             version=eks.KubernetesVersion.V1_19
         )
 
-        # Create the cluster-addons namespace
-        # It also is an example of deploying a Kubernetes Manifest (need to convert to JSON) in CDK
-        # if you would prefer to do that intead of use Flux to do GitOps with your cluster
-        cluster_addon_namespace = eks_cluster.add_manifest("ClusterAddonNamespace", {
-            "apiVersion": "v1",
-            "kind": "Namespace",
-            "metadata": {
-                "name": "cluster-addons"
-            }
-        })
-
         # Create the mapped AWS IAM Roles and Kubernetes Service Accounts for IRSA
         # For more info see https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
 
@@ -92,7 +110,7 @@ class EKSClusterStack(core.Stack):
         alb_service_account = eks_cluster.add_service_account(
             "aws-load-balancer-controller",
             name="aws-load-balancer-controller",
-            namespace="cluster-addons"
+            namespace="kube-system"
         )
 
         # Create the PolicyStatements to attach to the role
@@ -249,7 +267,7 @@ class EKSClusterStack(core.Stack):
         externaldns_service_account = eks_cluster.add_service_account(
             "external-dns",
             name="external-dns",
-            namespace="cluster-addons"
+            namespace="kube-system"
         )
 
         # Create the PolicyStatements to attach to the role
@@ -281,7 +299,7 @@ class EKSClusterStack(core.Stack):
         awsebscsidriver_service_account = eks_cluster.add_service_account(
             "awsebscsidriver",
             name="awsebscsidriver",
-            namespace="cluster-addons"
+            namespace="kube-system"
         )
 
         # Create the PolicyStatements to attach to the role
@@ -314,7 +332,7 @@ class EKSClusterStack(core.Stack):
         awsefscsidriver_service_account = eks_cluster.add_service_account(
             "awsefscsidriver",
             name="awsefscsidriver",
-            namespace="cluster-addons"
+            namespace="kube-system"
         )
 
         # Create the PolicyStatements to attach to the role
@@ -358,7 +376,7 @@ class EKSClusterStack(core.Stack):
         clusterautoscaler_service_account = eks_cluster.add_service_account(
             "clusterautoscaler",
             name="clusterautoscaler",
-            namespace="cluster-addons"
+            namespace="kube-system"
         )
 
         # Create the PolicyStatements to attach to the role
@@ -388,7 +406,7 @@ class EKSClusterStack(core.Stack):
             version="1.1.5",
             release="awslbcontroller-1-1-5",
             repository="https://aws.github.io/eks-charts",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "clusterName": eks_cluster.cluster_name,
                 "region": self.region,
@@ -409,7 +427,7 @@ class EKSClusterStack(core.Stack):
             version="4.9.0",
             release="externaldns-4-9-0",
             repository="https://charts.bitnami.com/bitnami",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "provider": "aws",
                 "aws": {
@@ -459,7 +477,7 @@ class EKSClusterStack(core.Stack):
         fluentbit_service_account = eks_cluster.add_service_account(
             "fluentbit",
             name="fluentbit",
-            namespace="cluster-addons"
+            namespace="kube-system"
         )
 
         fluentbit_policy_statement_json_1 = {
@@ -483,7 +501,7 @@ class EKSClusterStack(core.Stack):
             version="0.1.6",
             release="fluentbit-0-1-6",
             repository="https://aws.github.io/eks-charts",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "serviceAccount": {
                     "create": False,
@@ -514,7 +532,7 @@ class EKSClusterStack(core.Stack):
             version="14.0.1",
             release="prometheus-14-0-1",
             repository="https://prometheus-community.github.io/helm-charts",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "prometheus": {
                     "prometheusSpec": {
@@ -569,7 +587,7 @@ class EKSClusterStack(core.Stack):
             "apiVersion": "v1",
             "metadata": {
                 "name": "grafana-nlb",
-                "namespace": "cluster-addons",
+                "namespace": "kube-system",
                 "annotations": {
                     "service.beta.kubernetes.io/aws-load-balancer-type": "nlb-ip",
                     "service.beta.kubernetes.io/aws-load-balancer-internal": "true"
@@ -593,13 +611,13 @@ class EKSClusterStack(core.Stack):
 
         # Install the AWS EBS CSI Driver
         # For more info see https://github.com/kubernetes-sigs/aws-ebs-csi-driver
-        awsebscsichart = eks_cluster.add_helm_chart(
+        awsebscsi_chart = eks_cluster.add_helm_chart(
             "aws-ebs-csi-driver",
             chart="aws-ebs-csi-driver",
             version="0.9.14",
             release="awsebscsidriver-0-9-14",
             repository="https://kubernetes-sigs.github.io/aws-ebs-csi-driver",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "region": self.region,
                 "enableVolumeScheduling": True,
@@ -620,13 +638,13 @@ class EKSClusterStack(core.Stack):
 
         # Install the AWS EFS CSI Driver
         # For more info see https://github.com/kubernetes-sigs/aws-efs-csi-driver
-        awsefscsichart = eks_cluster.add_helm_chart(
+        awsefscsi_chart = eks_cluster.add_helm_chart(
             "aws-efs-csi-driver",
             chart="aws-efs-csi-driver",
             version="1.1.1",
             release="awsefscsidriver-1-1-1",
             repository="https://kubernetes-sigs.github.io/aws-efs-csi-driver/",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "serviceAccount": {
                     "controller": {
@@ -645,7 +663,7 @@ class EKSClusterStack(core.Stack):
             version="9.7.0",
             release="clusterautoscaler-9-7-0",
             repository="https://kubernetes.github.io/autoscaler",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "autoDiscovery": {
                     "clusterName": eks_cluster.cluster_name
@@ -669,7 +687,7 @@ class EKSClusterStack(core.Stack):
             version="5.8.0",
             release="metricsserver-5-8-0",
             repository="https://charts.bitnami.com/bitnami",
-            namespace="cluster-addons",
+            namespace="kube-system",
             values={
                 "replicas": 2
             }
@@ -683,18 +701,22 @@ class EKSClusterStack(core.Stack):
             version="3.4.0-beta.0",
             release="gatekeeper-3-4-0-beta",
             repository="https://open-policy-agent.github.io/gatekeeper/charts",
-            namespace="cluster-addons"
+            namespace="kube-system"
         )
 
-        # The namespace must exist before the service accounts can be created there
-        alb_service_account.node.add_dependency(cluster_addon_namespace)
-        externaldns_service_account.node.add_dependency(cluster_addon_namespace)
-        fluentbit_service_account.node.add_dependency(cluster_addon_namespace)
+        # The service accounts must exist before the charts can use them
+        awslbcontroller_chart.node.add_dependency(alb_service_account)
+        externaldns_chart.node.add_dependency(externaldns_service_account)
+        fluentbit_chart.node.add_dependency(fluentbit_service_account)
+        awsebscsi_chart.node.add_dependency(awsebscsidriver_service_account)
+        awsefscsi_chart.node.add_dependency(awsefscsidriver_service_account)
+        clusterautoscaler_chart.node.add_dependency(clusterautoscaler_service_account)
 
         # Gatekeeper being an admission controller needs to be deployed last to not interfere
         gatekeeper_chart.node.add_dependency(metricsserver_chart)
         gatekeeper_chart.node.add_dependency(clusterautoscaler_chart)
-        gatekeeper_chart.node.add_dependency(awsebscsichart)
+        gatekeeper_chart.node.add_dependency(awsebscsi_chart)
+        gatekeeper_chart.node.add_dependency(awsefscsi_chart)
         gatekeeper_chart.node.add_dependency(grafananlb_manifest)
         gatekeeper_chart.node.add_dependency(prometheus_chart)
         gatekeeper_chart.node.add_dependency(fluentbit_chart)
@@ -710,6 +732,67 @@ class EKSClusterStack(core.Stack):
 
         )
 
+        # If you have a 'True' in the deploy_bastion variable at the top of the file we'll deploy
+        # a basion server that you can connect to VS Code via HTTP on port 8080 on the public IP
+        # The password is the instance ID of the CodeServerInstance (find in the console)
+        if (deploy_bastion is True):
+            # Create an Instance Profile for our Admin Role to assume w/EC2
+            cluster_admin_role_instance_profile = iam.CfnInstanceProfile(
+                self, "ClusterAdminRoleInstanceProfile",
+                roles=[cluster_admin_role.role_name]        
+            )
+            
+            # Create code-server bastion
+            # Get Latest Amazon Linux AMI
+            amzn_linux = ec2.MachineImage.latest_amazon_linux(
+                generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
+                edition=ec2.AmazonLinuxEdition.STANDARD,
+                virtualization=ec2.AmazonLinuxVirt.HVM,
+                storage=ec2.AmazonLinuxStorage.GENERAL_PURPOSE
+                )
+
+            # Create SecurityGroup for code-server
+            bastion_security_group = ec2.SecurityGroup(
+                self, "BastionSecurityGroup",
+                vpc=eks_vpc,
+                allow_all_outbound=True
+            )
+            bastion_security_group.add_ingress_rule(
+                ec2.Peer.any_ipv4(),
+                ec2.Port.tcp(8080)
+            )
+
+            # Add a rule to allow our new SG to talk to the EKS control plane
+            eks_cluster.cluster_security_group.add_ingress_rule(
+                bastion_security_group,
+                ec2.Port.all_traffic()
+            )
+
+            # Create our EC2 instance running CodeServer
+            code_server_instance = ec2.Instance(
+                self, "CodeServerInstance",
+                instance_type=ec2.InstanceType("t3.large"),
+                machine_image=amzn_linux,
+                role=cluster_admin_role,
+                vpc=eks_vpc,
+                vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+                security_group=bastion_security_group,
+                block_devices=[ec2.BlockDevice(device_name="/dev/xvda", volume=ec2.BlockDeviceVolume.ebs(20))]
+            )
+
+            # Add UserData
+            code_server_instance.user_data.add_commands("mkdir -p ~/.local/lib ~/.local/bin ~/.config/code-server")
+            code_server_instance.user_data.add_commands("curl -fL https://github.com/cdr/code-server/releases/download/v3.9.1/code-server-3.9.1-linux-amd64.tar.gz | tar -C ~/.local/lib -xz")
+            code_server_instance.user_data.add_commands("mv ~/.local/lib/code-server-3.9.1-linux-amd64 ~/.local/lib/code-server-3.9.1")
+            code_server_instance.user_data.add_commands("ln -s ~/.local/lib/code-server-3.9.1/bin/code-server ~/.local/bin/code-server")
+            code_server_instance.user_data.add_commands("echo \"bind-addr: 0.0.0.0:8080\" > ~/.config/code-server/config.yaml")
+            code_server_instance.user_data.add_commands("echo \"auth: password\" >> ~/.config/code-server/config.yaml")
+            code_server_instance.user_data.add_commands("echo \"password: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)\" >> ~/.config/code-server/config.yaml")
+            code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
+            code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
+            code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
+            code_server_instance.user_data.add_commands("chmod +x ./kubectl")
+            code_server_instance.user_data.add_commands("mv ./kubectl /usr/local/bin")
 
 app = core.App()
 # Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that

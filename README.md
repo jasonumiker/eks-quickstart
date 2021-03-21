@@ -65,6 +65,10 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. Run `cdk deploy --require-approval never`
 1. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-0-1-6-aws-for-fluent-bit --namespace=cluster-addons` and add the following to the bottom `Replace_Dots On`
 
+## Deploy and set up a Bastion based on an EC2 instance running Code Server (which is like VS Code running in your browser) (https://github.com/cdr/code-server)
+
+TODO: Provide instructions
+
 ## Set up your Client VPN to access the environment
 
 1. Create the necessary keys and upload them to ACM as per https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
@@ -119,3 +123,8 @@ TODO: Walk through how to do an EKS Cluster to a new Kubernetes version and/or t
 ## Upgrading an add-on
 
 TODO: Walk through how to upgrade an individual add-on manifest/chart via CDK
+
+## Outstanding Issues
+
+* The CDK currently doesn't support enabling the logs on the control plane - https://github.com/aws/aws-cdk/issues/4159. If it appears that will be the case for awhile will investigate other ways to automate that in this script such as a CloudFormation custom resource
+* Investigate replacing the current instance ID password for the Bastion with something more secure such as generating a longer string and storing it in Secrets Manager
