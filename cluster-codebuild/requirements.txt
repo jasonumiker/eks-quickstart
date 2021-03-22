@@ -1,3 +1,4 @@
 aws-cdk.core
 aws-cdk.aws_iam
 aws-cdk.aws_codebuild
+aws-cdk.custom_resources

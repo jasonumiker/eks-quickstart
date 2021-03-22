@@ -15,6 +15,8 @@ from aws_cdk import (
 )
 import os
 
+from codebuild_custom_resource import CodeBuildObjectResource
+
 class EKSCodeBuildStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
@@ -51,6 +53,14 @@ class EKSCodeBuildStack(core.Stack):
             ),
             build_spec=codebuild.BuildSpec.from_source_filename("cluster-bootstrap/buildspec.yml")
         )
+
+        # Kick off our CodeBuild deployment once on the stack deployment (the webhook will take it from there)
+        CodeBuildObjectResource(
+            self, "CodeBuildObjectResource",
+            codebuild_name=build_project.project_name,
+            codebuild_arn=build_project.project_arn
+        )
+
 
 app = core.App()
 # Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that
