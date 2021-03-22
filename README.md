@@ -19,18 +19,26 @@ This project is an example of how you can combine the AWS Cloud Development Kit 
     1. TODO: Add some sensible initial policies to make our cluster 'secure by default'
 1. The cluster autoscaler (CA) (https://github.com/kubernetes/autoscaler)
 1. The metrics-server (required for the Horizontal Pod Autoscaler (HPA)) (https://github.com/kubernetes-sigs/metrics-server)
-1. TODO: A GitOps Pipeline based on CodeBuild doing another `cdk deploy` whenever `eks_cluster.py` changes
+1. (Optional) A GitOps Pipeline based on CodeBuild doing another `cdk deploy` whenever `eks_cluster.py` changes
 
 ### Why Cloud Development Kit (CDK)?
 
-TODO: Explain the benefits of the CDK
+The Cloud Development Kit is a tool where you can write infrastucture-as-code with 'actual' code (TypeScript, Python, C#, and Java). This takes these lanugages and 'compiles' them into a CloudFormation template for the AWS CloudFormation engine to then deploy and manage as stacks.
+
+When you develop with the CDK you then don't edit the intermediate CloudFormation but let CDK regenerate it in reponse to changes in the upstream template.
+
+What makes CDK uniquely good when it comes to our EKS Quickstart is:
+
+* It handles the IAM Roles for Service Accounts (IRSA) rather elegantly and creates the IAM Roles and Policies, creates the service accounts and then maps them to each other.
+* It has implemented custom CloudFormation resources with Lambda invoking kubectl and helm to deploy manifests and charts as part of the cluster provisioning.
+    * Until we have Managed Add-On for the common things with EKS this can fill the gap and provision us a complete cluster with all the add-ons we need.
 
 ## Getting started
 
 You can either deploy this from your machine or leverge CodeBuild. 
 
-###  Prerequisites - CodeBuild option
-To use the CodeBuild CloudFormation Teplate
+###  Deploy from CodeBuild
+To use the CodeBuild CloudFormation Template:
 
 1. Generate a personal access token on GitHub - https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token 
 1. Edit `cluster-codebuild/EKSCodeBuildStack.template.json` to change Location to your GitHub repo/path
@@ -39,19 +47,21 @@ To use the CodeBuild CloudFormation Teplate
 1. Go to the CodeBuild console, click on the Build project that starts with `EKSCodeBuild`, and then click the Start build button.
 1. (Optional) You can click the Tail logs button to follow along with the build process
 
-### Prerequisites - Bootstrap from your laptop
+**_NOTE:_** This also enables a GitOps pattern where changes to the cluster-bootrap folder on the branch mentioned (main by default) will re-trigger this CodeBuild to do another `cdk deploy` via web hook.
+
+### Deploy from your laptop
 There are some prerequsistes you likely will need to install on the machine doing your environment bootstrapping including Node, Python, the AWS CLI, the CDK, fluxctl and Helm
 
-#### Ubuntu 20.04.2 LTS (including via Windows 10's WSL)
+#### Pre-requisites - Ubuntu 20.04.2 LTS (including via Windows 10's WSL)
 Run `sudo ./ubuntu-prepreqs.sh`
 
-#### Mac
+#### Pre-requisites - Mac
 
 1. Install Homebrew (https://brew.sh/)
 1. Run `./mac-prereqs.sh`
 1. Edit your `~/.zshrc` and/or your `~/.bash_profile` to put /usr/local/bin at the start of your PATH statement so that the brew things installed take precendence over the built-in often outdated options like python2.
 
-### Deploy the VPC and EKS cluster with frequntly used add-ons
+#### Deploy from CDK locally
 
 1. Make sure that you have your AWS CLI configured with administrative access to the AWS account in question (e.g. an `aws s3 ls` works)
     1. This can be via setting your access key and secret in your .aws folder via `aws configure` or in your environment variables by copy and pasting from AWS SSO etc.
@@ -65,19 +75,42 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. Run `cdk deploy --require-approval never`
 1. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-0-1-6-aws-for-fluent-bit --namespace=cluster-addons` and add the following to the bottom `Replace_Dots On`
 
-## Deploy and set up a Bastion based on an EC2 instance running Code Server (which is like VS Code running in your browser) (https://github.com/cdr/code-server)
+## Deploy and set up a Bastion based on an EC2 instance running Code Server
 
-TODO: Provide instructions on how to connect to and use the Bastion
+If you set `deploy_bastion` to `True` in `eks_cluster.py` then the template will deploy an EC2 instance running [Code Server](https://github.com/cdr/code-server) which is Visual Studio Code but running in your browser.
+
+The stack will have an Output with the address to the Bastion and the password for the web interface defaults to the Instance ID of the Bastion Instance (which you can get from the EC2 Console).
+
+**_NOTE:_** Since this defaults to HTTP rather than HTTPS to accomodate accounts without a public Route 53 Zone and associated certificates that means that modern browsers won't allow you to paste with Ctrl-V. You can, however, paste with Shift-Insert.
 
 ## Set up your Client VPN to access the environment
 
-TODO: Provide instructions on how to configure the client
+If you set `deploy_vpn` to `True` in `eks_cluster.py` then the template will deploy a Client VPN.
+
+You need to create client and server certificates and upload them to ACM by following these instructions - https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual. Then you update `ekscluster.py` with the certificate ARNs.
+
+Once it has created your VPN you then need to configure the client:
+
+1. Open the AWS VPC Console and go to the Client VPN Endpoints on the left panel
+1. Click the Download Client Configuration button
+1. Edit the downloaded file and add:
+    1. A section at the bottom for the server cert in between <cert> and </cert>
+    1. Then under that a section for the client private key between <key> and </key>
+1. Install the AWS Client VPN Client - https://aws.amazon.com/vpn/client-vpn-download/
+1. Create a new profile pointing it at that configuration file
+1. Connect to the VPN
+
+Once you are connected it is a split tunnel - meaning only the addresses in your EKS VPC will get routed through the VPN tunnel.
+
+You then need to add the EKS cluster to your local kubeconfig by running the command in the clusterConfigCommand Output of the EKSClusterStack.
+
+Then you should be able to run a `kubectl get all -A` and see everything running on your cluster.
 
 ## Allow access to the Elasticsearch and Kibana to query your logs
 
 We put the Elasticsearch both in the VPC (i.e. not on the Internet) as well as in the same Security Group we use for controlling access to our EKS Control Plane. 
 
-We did this so that if we put the Client VPN in that security group as well then it will have access from a network perspective to *both* manage EKS and Elasticsearch/Kibana.
+We did this so that when we put the Client VPN in that security group as well then it has access from a network perspective to *both* manage EKS and Elasticsearch/Kibana.
 
 Since this ElasticSearch can only be reached from a network perspective if you are running within this VPC, or have private access to it via a VPN or DirectConnect, then it is not that risky to allow 'open access' to it - especially in a Proof of Concept (POC) environment.
 
@@ -88,9 +121,18 @@ In order to do this:
 1. Click on the Actions button on top and choose Modify Access Policy
 1. In the Domain access policy dropdown choose "Allow open access to the domain" and click Submit
 
-TODO: Add instructions for the first-time Kibana Index setup
+### Connect to Kibana and do initial setup
 
-TODO: Walk through how to do a few basic things in Kibana with your cluster logs
+1. Once that new access policy has applied click on the Kibana link on the Elasticsearch Domain's Overview Tab
+1. Click "Explore on my own" in the Welcome page
+1. Click "Connect to your Elasticsearch index" under "Use Elasticsearch Data"
+1. Close the About index patterns box
+1. Click the Create Index Pattern button
+1. In the Index pattern name box enter `fluent-bit*` and click Next step
+1. Pick @timestamp from the dropbown box and click Create index pattern
+1. Then go back Home and click Discover
+
+TODO: Walk through how to do a few basic things in Kibana with searching and dashboarding your logs.
 
 ## Checking out Grafana and the out-of-the-box metrics dashboards
 
