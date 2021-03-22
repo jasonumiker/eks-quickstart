@@ -54,16 +54,18 @@ class EKSCodeBuildStack(core.Stack):
             build_spec=codebuild.BuildSpec.from_source_filename("cluster-bootstrap/buildspec.yml")
         )
 
+        """ 
+        # This triggers CDK assets and therefore a cdk deploy being required defeating the purpose
+        # of this whole thing so going to rethink this one...
         # Kick off our CodeBuild deployment once on the stack deployment (the webhook will take it from there)
         CodeBuildObjectResource(
             self, "CodeBuildObjectResource",
             codebuild_name=build_project.project_name,
             codebuild_arn=build_project.project_arn
         )
+        """
 
 
 app = core.App()
-# Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that
-# it won't let us create 3 AZs and will only create a max of 2 - even when we ask for 3 in eks_vpc
 eks_codebuild_stack = EKSCodeBuildStack(app, "EKSCodeBuildStack")
 app.synth()

@@ -2,3 +2,4 @@
 cdk.out
 cdk.context.json
 node_modules
+__pycache__

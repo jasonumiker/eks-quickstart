@@ -197,7 +197,7 @@
     "CDKMetadata": {
       "Type": "AWS::CDK::Metadata",
       "Properties": {
-        "Analytics": "v2:deflate64:H4sIAAAAAAAAA0WNXQqDMBCEz+J7XCu2UN8KXkDiCWyS0vUnC8mGIiF3r9FCn75vGIapIbYNXIrH+PGl0nMVFTkDceBRzaIj69kFxaJ7WWk8BadM9r3QyEg2iTzEcYUoaTm6gz0tqLYcT0tJtFeo/z8HSZtnwEVD7B1N5vz56b7oN36TrRq4w62YPGLpgmVcDciTX6PMvtS+AAAA"
+        "Analytics": "v2:deflate64:H4sIAAAAAAAAAy2MXQrCMBCEz9L3dEtRQd+EXiDUE8RNxG3TLOQHKSF31zQ+zTd8zIxwO8PY3dUn9KjXISN7A/kRFa5iYheiTxjF9HKzCZw8mso/oSkSuyLqMJPaIM9sD3mkZEu419qoCGRtnomshiw9L6a9/rGUIuQe3+yGE1zh0i2BqPfJRdoMzC2/NHGBIKwAAAA="
       },
       "Metadata": {
         "aws:cdk:path": "EKSCodeBuildStack/CDKMetadata/Default"
@@ -210,6 +210,14 @@
       "Fn::Or": [
         {
           "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "af-south-1"
+              ]
+            },
             {
               "Fn::Equals": [
                 {
@@ -281,14 +289,6 @@
                 },
                 "cn-northwest-1"
               ]
-            },
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "AWS::Region"
-                },
-                "eu-central-1"
-              ]
             }
           ]
         },
@@ -299,7 +299,23 @@
                 {
                   "Ref": "AWS::Region"
                 },
+                "eu-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
                 "eu-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-south-1"
               ]
             },
             {
@@ -357,7 +373,11 @@
                 },
                 "us-east-2"
               ]
-            },
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
             {
               "Fn::Equals": [
                 {
