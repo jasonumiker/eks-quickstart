@@ -4,7 +4,7 @@ This project is an example of how you can combine the AWS Cloud Development Kit 
 
 ## What does this QuickStart create for you:
 
-1. An appropriate VPC (/22 CDIR w/1024 IPs by default - though you can edit this in `eks_cluster.py`) with public and private subnets across three availabilty zones.
+1. (Optional) An appropriate VPC (/22 CDIR w/1024 IPs by default - though you can edit this in `eks_cluster.py`) with public and private subnets across three availabilty zones.
 1. A new EKS cluster with:
     1. A dedicated new IAM role to create it from. The role that creates the cluster is a permanent, and rather hidden, full admin role that doesn't appear in nor is subject to the aws-auth config map. So, you want a dedicated role explicity for that purpose like CDK does for you here that you can then restrict access to assume unless you need it (e.g. you lock yourself out of the cluster with by making a mistake in the aws-auth configmap).
     1. A new Managed Node Group with 3 x m5.large instances spread across 3 Availability Zones.
