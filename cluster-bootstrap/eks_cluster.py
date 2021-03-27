@@ -54,6 +54,39 @@ create_new_cluster_admin_role = True
 # If create_new_cluster_admin_role is False then provide the ARN of the existing role to use
 existing_role_arn="arn:aws:iam::123456789123:role/RoleName"
 
+# Deploy the AWS Load Balancer Controller?
+deploy_aws_lb_controller = True
+
+# Deploy ExternalDNS?
+deploy_external_dns = True
+
+# Deploy managed Elasticsearch and fluent-bit Daemonset?
+deploy_managed_elasticsearch = True
+
+# Deploy the kube-prometheus operator (on-cluster Prometheus & Grafana)?
+deploy_kube_prometheus_operator = True
+
+# Deploy AWS EBS CSI Driver?
+deploy_aws_ebs_csi = True
+
+# Deploy AWS EFS CSI Driver?
+deploy_aws_efs_csi = True
+
+# Deploy OPA Gatekeeper?
+deploy_opa_gatekeeper = True
+
+# Deploy Cluster Autoscaler?
+deploy_cluster_autoscaler = True
+
+# Deploy metrics-server (required for the Horizontal Pod Autoscaler (HPA))?
+deploy_metrics_server = True
+
+# Deploy Calico Network Policy Provider?
+deploy_calico_np = True
+
+# Deploy AWS Simple Systems Manager (SSM) Agent?
+deploy_ssm_agent = True
+
 class EKSClusterStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
@@ -124,635 +157,1031 @@ class EKSClusterStack(core.Stack):
             version=eks.KubernetesVersion.V1_19
         )
 
-        # Create the mapped AWS IAM Roles and Kubernetes Service Accounts for IRSA
-        # For more info see https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
-
         # AWS Load Balancer Controller
-        alb_service_account = eks_cluster.add_service_account(
-            "aws-load-balancer-controller",
-            name="aws-load-balancer-controller",
-            namespace="kube-system"
-        )
+        if (deploy_aws_lb_controller is True):
+            alb_service_account = eks_cluster.add_service_account(
+                "aws-load-balancer-controller",
+                name="aws-load-balancer-controller",
+                namespace="kube-system"
+            )
 
-        # Create the PolicyStatements to attach to the role
-        # I couldn't find a way to get this to work with a whole PolicyDocument and there are 10 statements
-        alb_policy_statement_json_1 = {
-            "Effect": "Allow",
-            "Action": [
-                "acm:DescribeCertificate",
-                "acm:ListCertificates",
-                "acm:GetCertificate"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_2 = {
-            "Effect": "Allow",
-            "Action": [
-                "ec2:AuthorizeSecurityGroupIngress",
-                "ec2:CreateSecurityGroup",
-                "ec2:CreateTags",
-                "ec2:DeleteTags",
-                "ec2:DeleteSecurityGroup",
-                "ec2:DescribeAccountAttributes",
-                "ec2:DescribeAddresses",
-                "ec2:DescribeInstances",
-                "ec2:DescribeInstanceStatus",
-                "ec2:DescribeInternetGateways",
-                "ec2:DescribeNetworkInterfaces",
-                "ec2:DescribeSecurityGroups",
-                "ec2:DescribeSubnets",
-                "ec2:DescribeTags",
-                "ec2:DescribeVpcs",
-                "ec2:ModifyInstanceAttribute",
-                "ec2:ModifyNetworkInterfaceAttribute",
-                "ec2:RevokeSecurityGroupIngress"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_3 = {
-            "Effect": "Allow",
-            "Action": [
-                "elasticloadbalancing:AddListenerCertificates",
-                "elasticloadbalancing:AddTags",
-                "elasticloadbalancing:CreateListener",
-                "elasticloadbalancing:CreateLoadBalancer",
-                "elasticloadbalancing:CreateRule",
-                "elasticloadbalancing:CreateTargetGroup",
-                "elasticloadbalancing:DeleteListener",
-                "elasticloadbalancing:DeleteLoadBalancer",
-                "elasticloadbalancing:DeleteRule",
-                "elasticloadbalancing:DeleteTargetGroup",
-                "elasticloadbalancing:DeregisterTargets",
-                "elasticloadbalancing:DescribeListenerCertificates",
-                "elasticloadbalancing:DescribeListeners",
-                "elasticloadbalancing:DescribeLoadBalancers",
-                "elasticloadbalancing:DescribeLoadBalancerAttributes",
-                "elasticloadbalancing:DescribeRules",
-                "elasticloadbalancing:DescribeSSLPolicies",
-                "elasticloadbalancing:DescribeTags",
-                "elasticloadbalancing:DescribeTargetGroups",
-                "elasticloadbalancing:DescribeTargetGroupAttributes",
-                "elasticloadbalancing:DescribeTargetHealth",
-                "elasticloadbalancing:ModifyListener",
-                "elasticloadbalancing:ModifyLoadBalancerAttributes",
-                "elasticloadbalancing:ModifyRule",
-                "elasticloadbalancing:ModifyTargetGroup",
-                "elasticloadbalancing:ModifyTargetGroupAttributes",
-                "elasticloadbalancing:RegisterTargets",
-                "elasticloadbalancing:RemoveListenerCertificates",
-                "elasticloadbalancing:RemoveTags",
-                "elasticloadbalancing:SetIpAddressType",
-                "elasticloadbalancing:SetSecurityGroups",
-                "elasticloadbalancing:SetSubnets",
-                "elasticloadbalancing:SetWebAcl"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_4 = {
-            "Effect": "Allow",
-            "Action": [
-                "iam:CreateServiceLinkedRole",
-                "iam:GetServerCertificate",
-                "iam:ListServerCertificates"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_5 = {
-            "Effect": "Allow",
-            "Action": [
-                "cognito-idp:DescribeUserPoolClient"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_6 = {
-            "Effect": "Allow",
-            "Action": [
-                "waf-regional:GetWebACLForResource",
-                "waf-regional:GetWebACL",
-                "waf-regional:AssociateWebACL",
-                "waf-regional:DisassociateWebACL"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_7 = {
-            "Effect": "Allow",
-            "Action": [
-                "tag:GetResources",
-                "tag:TagResources"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_8 = {
-            "Effect": "Allow",
-            "Action": [
-                "waf:GetWebACL"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_9 = {
-            "Effect": "Allow",
-            "Action": [
-                "wafv2:GetWebACL",
-                "wafv2:GetWebACLForResource",
-                "wafv2:AssociateWebACL",
-                "wafv2:DisassociateWebACL"
-            ],
-            "Resource": "*"
-        }
-        alb_policy_statement_json_10 = {
-            "Effect": "Allow",
-            "Action": [
-                "shield:DescribeProtection",
-                "shield:GetSubscriptionState",
-                "shield:DeleteProtection",
-                "shield:CreateProtection",
-                "shield:DescribeSubscription",
-                "shield:ListProtections"
-            ],
-            "Resource": "*"
-        }
-        
-        # Attach the necessary permissions
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_1))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_2))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_3))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_4))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_5))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_6))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_7))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_8))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_9))
-        alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_10))
-
-        # External DNS Controller
-        externaldns_service_account = eks_cluster.add_service_account(
-            "external-dns",
-            name="external-dns",
-            namespace="kube-system"
-        )
-
-        # Create the PolicyStatements to attach to the role
-        externaldns_policy_statement_json_1 = {
-        "Effect": "Allow",
-            "Action": [
-                "route53:ChangeResourceRecordSets"
-            ],
-            "Resource": [
-                "arn:aws:route53:::hostedzone/*"
-            ]
-        }
-        externaldns_policy_statement_json_2 = {
-            "Effect": "Allow",
-            "Action": [
-                "route53:ListHostedZones",
-                "route53:ListResourceRecordSets"
-            ],
-            "Resource": [
-                "*"
-            ]
-        }
-
-        # Attach the necessary permissions
-        externaldns_service_account.add_to_policy(iam.PolicyStatement.from_json(externaldns_policy_statement_json_1))
-        externaldns_service_account.add_to_policy(iam.PolicyStatement.from_json(externaldns_policy_statement_json_2))
-
-        # AWS EBS CSI Driver
-        awsebscsidriver_service_account = eks_cluster.add_service_account(
-            "awsebscsidriver",
-            name="awsebscsidriver",
-            namespace="kube-system"
-        )
-
-        # Create the PolicyStatements to attach to the role
-        awsebscsidriver_policy_statement_json_1 = {
-            "Effect": "Allow",
-            "Action": [
-                "ec2:AttachVolume",
-                "ec2:CreateSnapshot",
-                "ec2:CreateTags",
-                "ec2:CreateVolume",
-                "ec2:DeleteSnapshot",
-                "ec2:DeleteTags",
-                "ec2:DeleteVolume",
-                "ec2:DescribeAvailabilityZones",
-                "ec2:DescribeInstances",
-                "ec2:DescribeSnapshots",
-                "ec2:DescribeTags",
-                "ec2:DescribeVolumes",
-                "ec2:DescribeVolumesModifications",
-                "ec2:DetachVolume",
-                "ec2:ModifyVolume"
-            ],
-            "Resource": "*"
-        }
-
-        # Attach the necessary permissions
-        awsebscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsebscsidriver_policy_statement_json_1))
-
-        # AWS EFS CSI Driver
-        awsefscsidriver_service_account = eks_cluster.add_service_account(
-            "awsefscsidriver",
-            name="awsefscsidriver",
-            namespace="kube-system"
-        )
-
-        # Create the PolicyStatements to attach to the role
-        awsefscsidriver_policy_statement_json_1 = {
-            "Effect": "Allow",
-            "Action": [
-                "elasticfilesystem:DescribeAccessPoints",
-                "elasticfilesystem:DescribeFileSystems"
-            ],
-            "Resource": "*"
-        }
-        awsefscsidriver_policy_statement_json_2 = {
-            "Effect": "Allow",
-            "Action": [
-                "elasticfilesystem:CreateAccessPoint"
-            ],
-            "Resource": "*",
-            "Condition": {
-                "StringLike": {
-                "aws:RequestTag/efs.csi.aws.com/cluster": "true"
-                }
-            }
-        }
-        awsefscsidriver_policy_statement_json_3 = {
-            "Effect": "Allow",
-            "Action": "elasticfilesystem:DeleteAccessPoint",
-            "Resource": "*",
-            "Condition": {
-                "StringEquals": {
-                "aws:ResourceTag/efs.csi.aws.com/cluster": "true"
-                }
-            }
-        }
-
-        # Attach the necessary permissions
-        awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_1))
-        awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_2))
-        awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_3))
-
-        # cluster-autoscaler
-        clusterautoscaler_service_account = eks_cluster.add_service_account(
-            "clusterautoscaler",
-            name="clusterautoscaler",
-            namespace="kube-system"
-        )
-
-        # Create the PolicyStatements to attach to the role
-        clusterautoscaler_policy_statement_json_1 = {
-            "Effect": "Allow",
-            "Action": [
-                "autoscaling:DescribeAutoScalingGroups",
-                "autoscaling:DescribeAutoScalingInstances",
-                "autoscaling:DescribeLaunchConfigurations",
-                "autoscaling:DescribeTags",
-                "autoscaling:SetDesiredCapacity",
-                "autoscaling:TerminateInstanceInAutoScalingGroup"
-            ],
-            "Resource": "*"
-        }
-
-        # Attach the necessary permissions
-        clusterautoscaler_service_account.add_to_policy(iam.PolicyStatement.from_json(clusterautoscaler_policy_statement_json_1))        
-
-        # Install our cluster add-ons
-        
-        # Deploy the AWS Load Balancer Controller from the AWS Helm Chart
-        # For more info check out https://github.com/aws/eks-charts/tree/master/stable/aws-load-balancer-controller
-        awslbcontroller_chart = eks_cluster.add_helm_chart(
-            "aws-load-balancer-controller",
-            chart="aws-load-balancer-controller",
-            version="1.1.5",
-            release="awslbcontroller-1-1-5",
-            repository="https://aws.github.io/eks-charts",
-            namespace="kube-system",
-            values={
-                "clusterName": eks_cluster.cluster_name,
-                "region": self.region,
-                "vpcId": eks_vpc.vpc_id,
-                "serviceAccount": {
-                    "create": False,
-                    "name": "aws-load-balancer-controller"
-                },
-                "replicaCount": 2
-            }
-        )
-
-        # Deploy External DNS from the bitnami Helm chart
-        # For more info see https://github.com/bitnami/charts/tree/master/bitnami/external-dns
-        externaldns_chart = eks_cluster.add_helm_chart(
-            "external-dns",
-            chart="external-dns",
-            version="4.9.0",
-            release="externaldns-4-9-0",
-            repository="https://charts.bitnami.com/bitnami",
-            namespace="kube-system",
-            values={
-                "provider": "aws",
-                "aws": {
-                    "region": self.region
-                },
-                "serviceAccount": {
-                    "create": False,
-                    "name": "external-dns"
-                },
-                "podSecurityContext": {
-                    "fsGroup": 65534
-                },
-                "replicas": 2
-            }
-        )    
-        
-        # Deploy a managed Amazon Elasticsearch and a fluent-bit to ship our container logs there
-
-        # Create a new ElasticSearch Domain
-        # NOTE: I changed this to a removal_policy of DESTROY to help cleanup while I was 
-        # developing/iterating on the project. If you comment out that line it defaults to keeping 
-        # the Domain upon deletion of the CloudFormation stack so you won't lose your log data
-        es_capacity = es.CapacityConfig(
-            data_nodes=1,
-            data_node_instance_type="r5.large.elasticsearch",
-            master_nodes=0,
-            master_node_instance_type="r5.large.elasticsearch"
-        )
-        es_ebs = es.EbsOptions(
-            enabled=True,
-            volume_type=ec2.EbsDeviceVolumeType.GP2,
-            volume_size=10
-        )
-        es_domain = es.Domain(
-            self, "ESDomain",
-            removal_policy=core.RemovalPolicy.DESTROY,
-            version=es.ElasticsearchVersion.V7_9,
-            vpc_options=es.VpcOptions(
-                subnets=[eks_vpc.private_subnets[0]],
-                security_groups=[eks_cluster.cluster_security_group]
-            ),
-            capacity=es_capacity,
-            ebs=es_ebs
-        )
-        
-        # Create the Service Account
-        fluentbit_service_account = eks_cluster.add_service_account(
-            "fluentbit",
-            name="fluentbit",
-            namespace="kube-system"
-        )
-
-        fluentbit_policy_statement_json_1 = {
-        "Effect": "Allow",
-            "Action": [
-                "es:ESHttp*"
-            ],
-            "Resource": [
-                es_domain.domain_arn
-            ]
-        }
-
-        # Add the policies to the service account
-        fluentbit_service_account.add_to_policy(iam.PolicyStatement.from_json(fluentbit_policy_statement_json_1))
-        es_domain.grant_write(fluentbit_service_account)
-
-        # For more info check out https://github.com/aws/eks-charts/tree/master/stable/aws-for-fluent-bit
-        fluentbit_chart = eks_cluster.add_helm_chart(
-            "fluentbit",
-            chart="aws-for-fluent-bit",
-            version="0.1.6",
-            release="fluentbit-0-1-6",
-            repository="https://aws.github.io/eks-charts",
-            namespace="kube-system",
-            values={
-                "serviceAccount": {
-                    "create": False,
-                    "name": "fluentbit"
-                },
-                "cloudWatch": {
-                    "enabled": False
-                },
-                "firehose": {
-                    "enabled": False
-                },
-                "kinesis": {
-                    "enabled": False
-                },
-                "elasticsearch": {
-                    "awsRegion": self.region,
-                    "host": es_domain.domain_endpoint
-                }
-            }
-        )
-
-        # Deploy Prometheus and Grafana
-        # TODO Replace this with the new AWS Managed Prometheus and Grafana when it is Generally Available (GA)
-        # For more information see https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
-        prometheus_chart = eks_cluster.add_helm_chart(
-            "metrics",
-            chart="kube-prometheus-stack",
-            version="14.0.1",
-            release="prometheus-14-0-1",
-            repository="https://prometheus-community.github.io/helm-charts",
-            namespace="kube-system",
-            values={
-                "prometheus": {
-                    "prometheusSpec": {
-                    "storageSpec": {
-                        "volumeClaimTemplate": {
-                        "spec": {
-                            "accessModes": [
-                            "ReadWriteOnce"
-                            ],
-                            "resources": {
-                            "requests": {
-                                "storage": "8Gi"
-                            }
-                            },
-                            "storageClassName": "gp2"
-                        }
-                        }
-                    }
-                    }
-                },
-                "alertmanager": {
-                    "alertmanagerSpec": {
-                    "storage": {
-                        "volumeClaimTemplate": {
-                        "spec": {
-                            "accessModes": [
-                            "ReadWriteOnce"
-                            ],
-                            "resources": {
-                            "requests": {
-                                "storage": "2Gi"
-                            }
-                            },
-                            "storageClassName": "gp2"
-                        }
-                        }
-                    }
-                    }
-                },
-                "grafana": {
-                    "persistence": {
-                        "enabled": "true",
-                        "storageClassName": "gp2"
-                    }
-                }
-            }          
-        )
-
-        # Deploy an internal NLB to Grafana
-        grafananlb_manifest = eks_cluster.add_manifest("GrafanaNLB",{
-            "kind": "Service",
-            "apiVersion": "v1",
-            "metadata": {
-                "name": "grafana-nlb",
-                "namespace": "kube-system",
-                "annotations": {
-                    "service.beta.kubernetes.io/aws-load-balancer-type": "nlb-ip",
-                    "service.beta.kubernetes.io/aws-load-balancer-internal": "true"
-                }
-            },
-            "spec": {
-                "ports": [
-                {
-                    "name": "service",
-                    "protocol": "TCP",
-                    "port": 80,
-                    "targetPort": 3000
-                }
+            # Create the PolicyStatements to attach to the role
+            # I couldn't find a way to get this to work with a whole PolicyDocument and there are 10 statements
+            alb_policy_statement_json_1 = {
+                "Effect": "Allow",
+                "Action": [
+                    "acm:DescribeCertificate",
+                    "acm:ListCertificates",
+                    "acm:GetCertificate"
                 ],
-                "selector": {
-                    "app.kubernetes.io/name": "grafana"
-                },
-                "type": "LoadBalancer"
+                "Resource": "*"
             }
-        })
-
-        # Install the AWS EBS CSI Driver
-        # For more info see https://github.com/kubernetes-sigs/aws-ebs-csi-driver
-        awsebscsi_chart = eks_cluster.add_helm_chart(
-            "aws-ebs-csi-driver",
-            chart="aws-ebs-csi-driver",
-            version="0.9.14",
-            release="awsebscsidriver-0-9-14",
-            repository="https://kubernetes-sigs.github.io/aws-ebs-csi-driver",
-            namespace="kube-system",
-            values={
-                "region": self.region,
-                "enableVolumeScheduling": True,
-                "enableVolumeResizing": True,
-                "enableVolumeSnapshot": True,
-                "serviceAccount": {
-                    "controller": {
-                        "create": False,
-                        "name": "awsebscsidriver"
-                    },
-                    "snapshot": {
-                        "create": False,
-                        "name": "awsebscsidriver"
-                    }
-                }
+            alb_policy_statement_json_2 = {
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:AuthorizeSecurityGroupIngress",
+                    "ec2:CreateSecurityGroup",
+                    "ec2:CreateTags",
+                    "ec2:DeleteTags",
+                    "ec2:DeleteSecurityGroup",
+                    "ec2:DescribeAccountAttributes",
+                    "ec2:DescribeAddresses",
+                    "ec2:DescribeInstances",
+                    "ec2:DescribeInstanceStatus",
+                    "ec2:DescribeInternetGateways",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeTags",
+                    "ec2:DescribeVpcs",
+                    "ec2:ModifyInstanceAttribute",
+                    "ec2:ModifyNetworkInterfaceAttribute",
+                    "ec2:RevokeSecurityGroupIngress"
+                ],
+                "Resource": "*"
             }
-        )
-
-        # Install the AWS EFS CSI Driver
-        # For more info see https://github.com/kubernetes-sigs/aws-efs-csi-driver
-        awsefscsi_chart = eks_cluster.add_helm_chart(
-            "aws-efs-csi-driver",
-            chart="aws-efs-csi-driver",
-            version="1.1.1",
-            release="awsefscsidriver-1-1-1",
-            repository="https://kubernetes-sigs.github.io/aws-efs-csi-driver/",
-            namespace="kube-system",
-            values={
-                "serviceAccount": {
-                    "controller": {
-                        "create": False,
-                        "name": "awsefscsidriver"
-                    }
-                }
+            alb_policy_statement_json_3 = {
+                "Effect": "Allow",
+                "Action": [
+                    "elasticloadbalancing:AddListenerCertificates",
+                    "elasticloadbalancing:AddTags",
+                    "elasticloadbalancing:CreateListener",
+                    "elasticloadbalancing:CreateLoadBalancer",
+                    "elasticloadbalancing:CreateRule",
+                    "elasticloadbalancing:CreateTargetGroup",
+                    "elasticloadbalancing:DeleteListener",
+                    "elasticloadbalancing:DeleteLoadBalancer",
+                    "elasticloadbalancing:DeleteRule",
+                    "elasticloadbalancing:DeleteTargetGroup",
+                    "elasticloadbalancing:DeregisterTargets",
+                    "elasticloadbalancing:DescribeListenerCertificates",
+                    "elasticloadbalancing:DescribeListeners",
+                    "elasticloadbalancing:DescribeLoadBalancers",
+                    "elasticloadbalancing:DescribeLoadBalancerAttributes",
+                    "elasticloadbalancing:DescribeRules",
+                    "elasticloadbalancing:DescribeSSLPolicies",
+                    "elasticloadbalancing:DescribeTags",
+                    "elasticloadbalancing:DescribeTargetGroups",
+                    "elasticloadbalancing:DescribeTargetGroupAttributes",
+                    "elasticloadbalancing:DescribeTargetHealth",
+                    "elasticloadbalancing:ModifyListener",
+                    "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                    "elasticloadbalancing:ModifyRule",
+                    "elasticloadbalancing:ModifyTargetGroup",
+                    "elasticloadbalancing:ModifyTargetGroupAttributes",
+                    "elasticloadbalancing:RegisterTargets",
+                    "elasticloadbalancing:RemoveListenerCertificates",
+                    "elasticloadbalancing:RemoveTags",
+                    "elasticloadbalancing:SetIpAddressType",
+                    "elasticloadbalancing:SetSecurityGroups",
+                    "elasticloadbalancing:SetSubnets",
+                    "elasticloadbalancing:SetWebAcl"
+                ],
+                "Resource": "*"
             }
-        )
+            alb_policy_statement_json_4 = {
+                "Effect": "Allow",
+                "Action": [
+                    "iam:CreateServiceLinkedRole",
+                    "iam:GetServerCertificate",
+                    "iam:ListServerCertificates"
+                ],
+                "Resource": "*"
+            }
+            alb_policy_statement_json_5 = {
+                "Effect": "Allow",
+                "Action": [
+                    "cognito-idp:DescribeUserPoolClient"
+                ],
+                "Resource": "*"
+            }
+            alb_policy_statement_json_6 = {
+                "Effect": "Allow",
+                "Action": [
+                    "waf-regional:GetWebACLForResource",
+                    "waf-regional:GetWebACL",
+                    "waf-regional:AssociateWebACL",
+                    "waf-regional:DisassociateWebACL"
+                ],
+                "Resource": "*"
+            }
+            alb_policy_statement_json_7 = {
+                "Effect": "Allow",
+                "Action": [
+                    "tag:GetResources",
+                    "tag:TagResources"
+                ],
+                "Resource": "*"
+            }
+            alb_policy_statement_json_8 = {
+                "Effect": "Allow",
+                "Action": [
+                    "waf:GetWebACL"
+                ],
+                "Resource": "*"
+            }
+            alb_policy_statement_json_9 = {
+                "Effect": "Allow",
+                "Action": [
+                    "wafv2:GetWebACL",
+                    "wafv2:GetWebACLForResource",
+                    "wafv2:AssociateWebACL",
+                    "wafv2:DisassociateWebACL"
+                ],
+                "Resource": "*"
+            }
+            alb_policy_statement_json_10 = {
+                "Effect": "Allow",
+                "Action": [
+                    "shield:DescribeProtection",
+                    "shield:GetSubscriptionState",
+                    "shield:DeleteProtection",
+                    "shield:CreateProtection",
+                    "shield:DescribeSubscription",
+                    "shield:ListProtections"
+                ],
+                "Resource": "*"
+            }
+            
+            # Attach the necessary permissions
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_1))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_2))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_3))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_4))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_5))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_6))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_7))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_8))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_9))
+            alb_service_account.add_to_policy(iam.PolicyStatement.from_json(alb_policy_statement_json_10))
 
-        # Install the Cluster Autoscaler
-        # For more info see https://github.com/kubernetes/autoscaler
-        clusterautoscaler_chart = eks_cluster.add_helm_chart(
-            "cluster-autoscaler",
-            chart="cluster-autoscaler",
-            version="9.7.0",
-            release="clusterautoscaler-9-7-0",
-            repository="https://kubernetes.github.io/autoscaler",
-            namespace="kube-system",
-            values={
-                "autoDiscovery": {
-                    "clusterName": eks_cluster.cluster_name
-                },
-                "awsRegion": self.region,
-                "rbac": {
+            # Deploy the AWS Load Balancer Controller from the AWS Helm Chart
+            # For more info check out https://github.com/aws/eks-charts/tree/master/stable/aws-load-balancer-controller
+            awslbcontroller_chart = eks_cluster.add_helm_chart(
+                "aws-load-balancer-controller",
+                chart="aws-load-balancer-controller",
+                version="1.1.5",
+                release="awslbcontroller-1-1-5",
+                repository="https://aws.github.io/eks-charts",
+                namespace="kube-system",
+                values={
+                    "clusterName": eks_cluster.cluster_name,
+                    "region": self.region,
+                    "vpcId": eks_vpc.vpc_id,
                     "serviceAccount": {
                         "create": False,
-                        "name": "clusterautoscaler"
+                        "name": "aws-load-balancer-controller"
+                    },
+                    "replicaCount": 2
+                }
+            )
+            awslbcontroller_chart.node.add_dependency(alb_service_account)
+
+        # External DNS Controller
+        if (deploy_external_dns is True):
+            externaldns_service_account = eks_cluster.add_service_account(
+                "external-dns",
+                name="external-dns",
+                namespace="kube-system"
+            )
+
+            # Create the PolicyStatements to attach to the role
+            externaldns_policy_statement_json_1 = {
+            "Effect": "Allow",
+                "Action": [
+                    "route53:ChangeResourceRecordSets"
+                ],
+                "Resource": [
+                    "arn:aws:route53:::hostedzone/*"
+                ]
+            }
+            externaldns_policy_statement_json_2 = {
+                "Effect": "Allow",
+                "Action": [
+                    "route53:ListHostedZones",
+                    "route53:ListResourceRecordSets"
+                ],
+                "Resource": [
+                    "*"
+                ]
+            }
+
+            # Attach the necessary permissions
+            externaldns_service_account.add_to_policy(iam.PolicyStatement.from_json(externaldns_policy_statement_json_1))
+            externaldns_service_account.add_to_policy(iam.PolicyStatement.from_json(externaldns_policy_statement_json_2))
+
+            # Deploy External DNS from the bitnami Helm chart
+            # For more info see https://github.com/bitnami/charts/tree/master/bitnami/external-dns
+            externaldns_chart = eks_cluster.add_helm_chart(
+                "external-dns",
+                chart="external-dns",
+                version="4.9.0",
+                release="externaldns-4-9-0",
+                repository="https://charts.bitnami.com/bitnami",
+                namespace="kube-system",
+                values={
+                    "provider": "aws",
+                    "aws": {
+                        "region": self.region
+                    },
+                    "serviceAccount": {
+                        "create": False,
+                        "name": "external-dns"
+                    },
+                    "podSecurityContext": {
+                        "fsGroup": 65534
+                    },
+                    "replicas": 2
+                }
+            )
+            externaldns_chart.node.add_dependency(externaldns_service_account)    
+
+        # AWS EBS CSI Driver
+        if (deploy_aws_ebs_csi is True):
+            awsebscsidriver_service_account = eks_cluster.add_service_account(
+                "awsebscsidriver",
+                name="awsebscsidriver",
+                namespace="kube-system"
+            )
+
+            # Create the PolicyStatements to attach to the role
+            awsebscsidriver_policy_statement_json_1 = {
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:AttachVolume",
+                    "ec2:CreateSnapshot",
+                    "ec2:CreateTags",
+                    "ec2:CreateVolume",
+                    "ec2:DeleteSnapshot",
+                    "ec2:DeleteTags",
+                    "ec2:DeleteVolume",
+                    "ec2:DescribeAvailabilityZones",
+                    "ec2:DescribeInstances",
+                    "ec2:DescribeSnapshots",
+                    "ec2:DescribeTags",
+                    "ec2:DescribeVolumes",
+                    "ec2:DescribeVolumesModifications",
+                    "ec2:DetachVolume",
+                    "ec2:ModifyVolume"
+                ],
+                "Resource": "*"
+            }
+
+            # Attach the necessary permissions
+            awsebscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsebscsidriver_policy_statement_json_1))
+
+            # Install the AWS EBS CSI Driver
+            # For more info see https://github.com/kubernetes-sigs/aws-ebs-csi-driver
+            awsebscsi_chart = eks_cluster.add_helm_chart(
+                "aws-ebs-csi-driver",
+                chart="aws-ebs-csi-driver",
+                version="0.9.14",
+                release="awsebscsidriver-0-9-14",
+                repository="https://kubernetes-sigs.github.io/aws-ebs-csi-driver",
+                namespace="kube-system",
+                values={
+                    "region": self.region,
+                    "enableVolumeScheduling": True,
+                    "enableVolumeResizing": True,
+                    "enableVolumeSnapshot": True,
+                    "serviceAccount": {
+                        "controller": {
+                            "create": False,
+                            "name": "awsebscsidriver"
+                        },
+                        "snapshot": {
+                            "create": False,
+                            "name": "awsebscsidriver"
+                        }
+                    }
+                }
+            )
+            awsebscsi_chart.node.add_dependency(awsebscsidriver_service_account)
+
+        # AWS EFS CSI Driver
+        if (deploy_aws_efs_csi is True):
+            awsefscsidriver_service_account = eks_cluster.add_service_account(
+                "awsefscsidriver",
+                name="awsefscsidriver",
+                namespace="kube-system"
+            )
+
+            # Create the PolicyStatements to attach to the role
+            awsefscsidriver_policy_statement_json_1 = {
+                "Effect": "Allow",
+                "Action": [
+                    "elasticfilesystem:DescribeAccessPoints",
+                    "elasticfilesystem:DescribeFileSystems"
+                ],
+                "Resource": "*"
+            }
+            awsefscsidriver_policy_statement_json_2 = {
+                "Effect": "Allow",
+                "Action": [
+                    "elasticfilesystem:CreateAccessPoint"
+                ],
+                "Resource": "*",
+                "Condition": {
+                    "StringLike": {
+                    "aws:RequestTag/efs.csi.aws.com/cluster": "true"
+                    }
+                }
+            }
+            awsefscsidriver_policy_statement_json_3 = {
+                "Effect": "Allow",
+                "Action": "elasticfilesystem:DeleteAccessPoint",
+                "Resource": "*",
+                "Condition": {
+                    "StringEquals": {
+                    "aws:ResourceTag/efs.csi.aws.com/cluster": "true"
+                    }
+                }
+            }
+
+            # Attach the necessary permissions
+            awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_1))
+            awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_2))
+            awsefscsidriver_service_account.add_to_policy(iam.PolicyStatement.from_json(awsefscsidriver_policy_statement_json_3))
+
+            # Install the AWS EFS CSI Driver
+            # For more info see https://github.com/kubernetes-sigs/aws-efs-csi-driver
+            awsefscsi_chart = eks_cluster.add_helm_chart(
+                "aws-efs-csi-driver",
+                chart="aws-efs-csi-driver",
+                version="1.1.1",
+                release="awsefscsidriver-1-1-1",
+                repository="https://kubernetes-sigs.github.io/aws-efs-csi-driver/",
+                namespace="kube-system",
+                values={
+                    "serviceAccount": {
+                        "controller": {
+                            "create": False,
+                            "name": "awsefscsidriver"
+                        }
+                    }
+                }
+            )
+            awsefscsi_chart.node.add_dependency(awsefscsidriver_service_account)
+
+        # cluster-autoscaler
+        if (deploy_cluster_autoscaler is True):
+            clusterautoscaler_service_account = eks_cluster.add_service_account(
+                "clusterautoscaler",
+                name="clusterautoscaler",
+                namespace="kube-system"
+            )
+
+            # Create the PolicyStatements to attach to the role
+            clusterautoscaler_policy_statement_json_1 = {
+                "Effect": "Allow",
+                "Action": [
+                    "autoscaling:DescribeAutoScalingGroups",
+                    "autoscaling:DescribeAutoScalingInstances",
+                    "autoscaling:DescribeLaunchConfigurations",
+                    "autoscaling:DescribeTags",
+                    "autoscaling:SetDesiredCapacity",
+                    "autoscaling:TerminateInstanceInAutoScalingGroup"
+                ],
+                "Resource": "*"
+            }
+
+            # Attach the necessary permissions
+            clusterautoscaler_service_account.add_to_policy(iam.PolicyStatement.from_json(clusterautoscaler_policy_statement_json_1))
+
+            # Install the Cluster Autoscaler
+            # For more info see https://github.com/kubernetes/autoscaler
+            clusterautoscaler_chart = eks_cluster.add_helm_chart(
+                "cluster-autoscaler",
+                chart="cluster-autoscaler",
+                version="9.7.0",
+                release="clusterautoscaler-9-7-0",
+                repository="https://kubernetes.github.io/autoscaler",
+                namespace="kube-system",
+                values={
+                    "autoDiscovery": {
+                        "clusterName": eks_cluster.cluster_name
+                    },
+                    "awsRegion": self.region,
+                    "rbac": {
+                        "serviceAccount": {
+                            "create": False,
+                            "name": "clusterautoscaler"
+                        }
+                    },
+                    "replicaCount": 2
+                }
+            )
+            clusterautoscaler_chart.node.add_dependency(clusterautoscaler_service_account)
+        
+        # Deploy a managed Amazon Elasticsearch and a fluent-bit to ship our container logs there
+        if (deploy_managed_elasticsearch is True):
+            # Create a new ElasticSearch Domain
+            # NOTE: I changed this to a removal_policy of DESTROY to help cleanup while I was 
+            # developing/iterating on the project. If you comment out that line it defaults to keeping 
+            # the Domain upon deletion of the CloudFormation stack so you won't lose your log data
+            es_capacity = es.CapacityConfig(
+                data_nodes=1,
+                data_node_instance_type="r5.large.elasticsearch",
+                master_nodes=0,
+                master_node_instance_type="r5.large.elasticsearch"
+            )
+            es_ebs = es.EbsOptions(
+                enabled=True,
+                volume_type=ec2.EbsDeviceVolumeType.GP2,
+                volume_size=10
+            )
+            es_domain = es.Domain(
+                self, "ESDomain",
+                removal_policy=core.RemovalPolicy.DESTROY,
+                version=es.ElasticsearchVersion.V7_9,
+                vpc_options=es.VpcOptions(
+                    subnets=[eks_vpc.private_subnets[0]],
+                    security_groups=[eks_cluster.cluster_security_group]
+                ),
+                capacity=es_capacity,
+                ebs=es_ebs
+            )
+            
+            # Create the Service Account
+            fluentbit_service_account = eks_cluster.add_service_account(
+                "fluentbit",
+                name="fluentbit",
+                namespace="kube-system"
+            )
+
+            fluentbit_policy_statement_json_1 = {
+            "Effect": "Allow",
+                "Action": [
+                    "es:ESHttp*"
+                ],
+                "Resource": [
+                    es_domain.domain_arn
+                ]
+            }
+
+            # Add the policies to the service account
+            fluentbit_service_account.add_to_policy(iam.PolicyStatement.from_json(fluentbit_policy_statement_json_1))
+            es_domain.grant_write(fluentbit_service_account)
+
+            # For more info check out https://github.com/aws/eks-charts/tree/master/stable/aws-for-fluent-bit
+            fluentbit_chart = eks_cluster.add_helm_chart(
+                "fluentbit",
+                chart="aws-for-fluent-bit",
+                version="0.1.6",
+                release="fluentbit-0-1-6",
+                repository="https://aws.github.io/eks-charts",
+                namespace="kube-system",
+                values={
+                    "serviceAccount": {
+                        "create": False,
+                        "name": "fluentbit"
+                    },
+                    "cloudWatch": {
+                        "enabled": False
+                    },
+                    "firehose": {
+                        "enabled": False
+                    },
+                    "kinesis": {
+                        "enabled": False
+                    },
+                    "elasticsearch": {
+                        "awsRegion": self.region,
+                        "host": es_domain.domain_endpoint
+                    }
+                }
+            )
+            fluentbit_chart.node.add_dependency(fluentbit_service_account)
+            
+            # Output the Kibana address in our CloudFormation Stack
+            core.CfnOutput(
+                self, "KibanaAddress",
+                value=es_domain.domain_endpoint + "/_plugin/kibana/",
+                description="Private endpoint for this EKS environment's Kibana to consume the logs",
+
+            )
+
+        # Deploy Prometheus and Grafana
+        if (deploy_kube_prometheus_operator is True):
+            # TODO Replace this with the new AWS Managed Prometheus and Grafana when it is Generally Available (GA)
+            # For more information see https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+            prometheus_chart = eks_cluster.add_helm_chart(
+                "metrics",
+                chart="kube-prometheus-stack",
+                version="14.0.1",
+                release="prometheus-14-0-1",
+                repository="https://prometheus-community.github.io/helm-charts",
+                namespace="kube-system",
+                values={
+                    "prometheus": {
+                        "prometheusSpec": {
+                        "storageSpec": {
+                            "volumeClaimTemplate": {
+                            "spec": {
+                                "accessModes": [
+                                "ReadWriteOnce"
+                                ],
+                                "resources": {
+                                "requests": {
+                                    "storage": "8Gi"
+                                }
+                                },
+                                "storageClassName": "gp2"
+                            }
+                            }
+                        }
+                        }
+                    },
+                    "alertmanager": {
+                        "alertmanagerSpec": {
+                        "storage": {
+                            "volumeClaimTemplate": {
+                            "spec": {
+                                "accessModes": [
+                                "ReadWriteOnce"
+                                ],
+                                "resources": {
+                                "requests": {
+                                    "storage": "2Gi"
+                                }
+                                },
+                                "storageClassName": "gp2"
+                            }
+                            }
+                        }
+                        }
+                    },
+                    "grafana": {
+                        "persistence": {
+                            "enabled": "true",
+                            "storageClassName": "gp2"
+                        }
+                    }
+                }          
+            )
+
+            # Deploy an internal NLB to Grafana
+            grafananlb_manifest = eks_cluster.add_manifest("GrafanaNLB",{
+                "kind": "Service",
+                "apiVersion": "v1",
+                "metadata": {
+                    "name": "grafana-nlb",
+                    "namespace": "kube-system",
+                    "annotations": {
+                        "service.beta.kubernetes.io/aws-load-balancer-type": "nlb-ip",
+                        "service.beta.kubernetes.io/aws-load-balancer-internal": "true"
                     }
                 },
-                "replicaCount": 2
-            }
-        )
+                "spec": {
+                    "ports": [
+                    {
+                        "name": "service",
+                        "protocol": "TCP",
+                        "port": 80,
+                        "targetPort": 3000
+                    }
+                    ],
+                    "selector": {
+                        "app.kubernetes.io/name": "grafana"
+                    },
+                    "type": "LoadBalancer"
+                }
+            })
 
         # Install the metrics-server (required for the HPA)
-        # For more info see https://github.com/bitnami/charts/tree/master/bitnami/metrics-server
-        metricsserver_chart = eks_cluster.add_helm_chart(
-            "metrics-server",
-            chart="metrics-server",
-            version="5.8.0",
-            release="metricsserver-5-8-0",
-            repository="https://charts.bitnami.com/bitnami",
-            namespace="kube-system",
-            values={
-                "replicas": 2
-            }
-        )
+        if (deploy_metrics_server is True):
+            # For more info see https://github.com/bitnami/charts/tree/master/bitnami/metrics-server
+            metricsserver_chart = eks_cluster.add_helm_chart(
+                "metrics-server",
+                chart="metrics-server",
+                version="5.8.0",
+                release="metricsserver-5-8-0",
+                repository="https://charts.bitnami.com/bitnami",
+                namespace="kube-system",
+                values={
+                    "replicas": 2
+                }
+            )
 
         # Install the OPA Gatekeeper
-        # For more info see https://github.com/open-policy-agent/gatekeeper
-        gatekeeper_chart = eks_cluster.add_helm_chart(
-            "gatekeeper",
-            chart="gatekeeper",
-            version="3.4.0-beta.0",
-            release="gatekeeper-3-4-0-beta",
-            repository="https://open-policy-agent.github.io/gatekeeper/charts",
-            namespace="kube-system"
-        )
+        if (deploy_opa_gatekeeper is True):
+            # For more info see https://github.com/open-policy-agent/gatekeeper
+            gatekeeper_chart = eks_cluster.add_helm_chart(
+                "gatekeeper",
+                chart="gatekeeper",
+                version="3.4.0-beta.0",
+                release="gatekeeper-3-4-0-beta",
+                repository="https://open-policy-agent.github.io/gatekeeper/charts",
+                namespace="kube-system"
+            )
 
-        # The service accounts must exist before the charts can use them
-        awslbcontroller_chart.node.add_dependency(alb_service_account)
-        externaldns_chart.node.add_dependency(externaldns_service_account)
-        fluentbit_chart.node.add_dependency(fluentbit_service_account)
-        awsebscsi_chart.node.add_dependency(awsebscsidriver_service_account)
-        awsefscsi_chart.node.add_dependency(awsefscsidriver_service_account)
-        clusterautoscaler_chart.node.add_dependency(clusterautoscaler_service_account)
+            # Gatekeeper being an admission controller needs to be deployed last to not interfere
+            if (metricsserver_chart is not None):
+                gatekeeper_chart.node.add_dependency(metricsserver_chart)
+            if (clusterautoscaler_chart is not None):
+                gatekeeper_chart.node.add_dependency(clusterautoscaler_chart)
+            if (awsebscsi_chart is not None):
+                gatekeeper_chart.node.add_dependency(awsebscsi_chart)
+            if (awsefscsi_chart is not None):            
+                gatekeeper_chart.node.add_dependency(awsefscsi_chart)
+            if (grafananlb_manifest is not None):            
+                gatekeeper_chart.node.add_dependency(grafananlb_manifest)
+            if (prometheus_chart is not None):            
+                gatekeeper_chart.node.add_dependency(prometheus_chart)
+            if (fluentbit_chart is not None):            
+                gatekeeper_chart.node.add_dependency(fluentbit_chart)
+            if (externaldns_chart is not None):            
+                gatekeeper_chart.node.add_dependency(externaldns_chart)
+            if (awslbcontroller_chart is not None):            
+                gatekeeper_chart.node.add_dependency(awslbcontroller_chart)
 
-        # Gatekeeper being an admission controller needs to be deployed last to not interfere
-        gatekeeper_chart.node.add_dependency(metricsserver_chart)
-        gatekeeper_chart.node.add_dependency(clusterautoscaler_chart)
-        gatekeeper_chart.node.add_dependency(awsebscsi_chart)
-        gatekeeper_chart.node.add_dependency(awsefscsi_chart)
-        gatekeeper_chart.node.add_dependency(grafananlb_manifest)
-        gatekeeper_chart.node.add_dependency(prometheus_chart)
-        gatekeeper_chart.node.add_dependency(fluentbit_chart)
-        gatekeeper_chart.node.add_dependency(externaldns_chart)
-        gatekeeper_chart.node.add_dependency(awslbcontroller_chart)
+        # Install the OPA Gatekeeper
+        if (deploy_calico_np is True):
+            # For more info see https://docs.aws.amazon.com/eks/latest/userguide/calico.html 
+            # and https://github.com/aws/amazon-vpc-cni-k8s/tree/master/charts/aws-calico
 
+            # First we need to install the CRDs which are not part of the Chart
+            calico_crds_manifest_1 = eks_cluster.add_manifest("CalicoCRDManifest1",            
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "felixconfigurations.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "FelixConfiguration",
+                    "plural": "felixconfigurations",
+                    "singular": "felixconfiguration"
+                    }
+                }
+                })
+            calico_crds_manifest_2 = eks_cluster.add_manifest("CalicoCRDManifest2",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "ipamblocks.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "IPAMBlock",
+                    "plural": "ipamblocks",
+                    "singular": "ipamblock"
+                    }
+                }
+                })
+            calico_crds_manifest_3 = eks_cluster.add_manifest("CalicoCRDManifest3",            
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "blockaffinities.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "BlockAffinity",
+                    "plural": "blockaffinities",
+                    "singular": "blockaffinity"
+                    }
+                }
+                })
+            calico_crds_manifest_4 = eks_cluster.add_manifest("CalicoCRDManifest4",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "bgpconfigurations.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "BGPConfiguration",
+                    "plural": "bgpconfigurations",
+                    "singular": "bgpconfiguration"
+                    }
+                }
+                })
+            calico_crds_manifest_5 = eks_cluster.add_manifest("CalicoCRDManifest5",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "bgppeers.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "BGPPeer",
+                    "plural": "bgppeers",
+                    "singular": "bgppeer"
+                    }
+                }
+                })
+            calico_crds_manifest_6 = eks_cluster.add_manifest("CalicoCRDManifest6",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "ippools.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "IPPool",
+                    "plural": "ippools",
+                    "singular": "ippool"
+                    }
+                }
+                })
+            calico_crds_manifest_7 = eks_cluster.add_manifest("CalicoCRDManifest7",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "hostendpoints.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "HostEndpoint",
+                    "plural": "hostendpoints",
+                    "singular": "hostendpoint"
+                    }
+                }
+                })
+            calico_crds_manifest_8 = eks_cluster.add_manifest("CalicoCRDManifest8",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "clusterinformations.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "ClusterInformation",
+                    "plural": "clusterinformations",
+                    "singular": "clusterinformation"
+                    }
+                }
+                })
+            calico_crds_manifest_9 = eks_cluster.add_manifest("CalicoCRDManifest9",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "globalnetworkpolicies.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "GlobalNetworkPolicy",
+                    "plural": "globalnetworkpolicies",
+                    "singular": "globalnetworkpolicy"
+                    }
+                }
+                })
+            calico_crds_manifest_10 = eks_cluster.add_manifest("CalicoCRDManifest10",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "globalnetworksets.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Cluster",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "GlobalNetworkSet",
+                    "plural": "globalnetworksets",
+                    "singular": "globalnetworkset"
+                    }
+                }
+                })
+            calico_crds_manifest_11 = eks_cluster.add_manifest("CalicoCRDManifest11",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "networkpolicies.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Namespaced",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "NetworkPolicy",
+                    "plural": "networkpolicies",
+                    "singular": "networkpolicy"
+                    }
+                }
+                })
+            calico_crds_manifest_12 = eks_cluster.add_manifest("CalicoCRDManifest12",
+                {
+                "apiVersion": "apiextensions.k8s.io/v1beta1",
+                "kind": "CustomResourceDefinition",
+                "metadata": {
+                    "name": "networksets.crd.projectcalico.org"
+                },
+                "spec": {
+                    "scope": "Namespaced",
+                    "group": "crd.projectcalico.org",
+                    "versions": [
+                    {
+                        "name": "v1",
+                        "served": True,
+                        "storage": True
+                    }
+                    ],
+                    "names": {
+                    "kind": "NetworkSet",
+                    "plural": "networksets",
+                    "singular": "networkset"
+                    }
+                }
+                })
+            # Then we can install the Helm Chart
+            calico_np_chart = eks_cluster.add_helm_chart(
+                "calico",
+                chart="aws-calico",
+                version="0.3.4",
+                release="calico-0-3-4",
+                repository="https://aws.github.io/eks-charts",
+                namespace="kube-system"
+            )
+            # The Helm Chart depends on all the CRDs
+            calico_np_chart.node.add_dependency(calico_crds_manifest_1)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_2)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_3)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_4)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_5)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_6)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_7)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_8)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_9)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_10)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_11)
+            calico_np_chart.node.add_dependency(calico_crds_manifest_12)
 
-        # Output the Kibana address in our CloudFormation Stack
-        core.CfnOutput(
-            self, "KibanaAddress",
-            value=es_domain.domain_endpoint + "/_plugin/kibana/",
-            description="Private endpoint for this EKS environment's Kibana to consume the logs",
-
-        )
-
+        # Deploy SSM Agent
+        if (deploy_ssm_agent is True):
+            # For more information see https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/install-ssm-agent-on-amazon-eks-worker-nodes-by-using-kubernetes-daemonset.html
+            eks_cluster.add_manifest("SSMAgentManifest",
+                {
+                "apiVersion": "apps/v1",
+                "kind": "DaemonSet",
+                "metadata": {
+                    "labels": {
+                    "k8s-app": "ssm-installer"
+                    },
+                    "name": "ssm-installer",
+                    "namespace": "default"
+                },
+                "spec": {
+                    "selector": {
+                    "matchLabels": {
+                        "k8s-app": "ssm-installer"
+                    }
+                    },
+                    "template": {
+                    "metadata": {
+                        "labels": {
+                        "k8s-app": "ssm-installer"
+                        }
+                    },
+                    "spec": {
+                        "containers": [
+                        {
+                            "image": "amazonlinux",
+                            "imagePullPolicy": "Always",
+                            "name": "ssm",
+                            "command": [
+                            "/bin/bash"
+                            ],
+                            "args": [
+                            "-c",
+                            "echo '* * * * * root yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm & rm -rf /etc/cron.d/ssmstart' > /etc/cron.d/ssmstart"
+                            ],
+                            "securityContext": {
+                            "allowPrivilegeEscalation": True
+                            },
+                            "volumeMounts": [
+                            {
+                                "mountPath": "/etc/cron.d",
+                                "name": "cronfile"
+                            }
+                            ],
+                            "terminationMessagePath": "/dev/termination-log",
+                            "terminationMessagePolicy": "File"
+                        }
+                        ],
+                        "volumes": [
+                        {
+                            "name": "cronfile",
+                            "hostPath": {
+                            "path": "/etc/cron.d",
+                            "type": "Directory"
+                            }
+                        }
+                        ],
+                        "dnsPolicy": "ClusterFirst",
+                        "restartPolicy": "Always",
+                        "schedulerName": "default-scheduler",
+                        "terminationGracePeriodSeconds": 30
+                    }
+                    }
+                }
+                })
+                
         # If you have a 'True' in the deploy_bastion variable at the top of the file we'll deploy
         # a basion server that you can connect to VS Code via HTTP on port 8080 on the public IP
         # The password is the instance ID of the CodeServerInstance (find in the console)

@@ -8,18 +8,21 @@ This project is an example of how you can combine the AWS Cloud Development Kit 
 1. A new EKS cluster with:
     1. A dedicated new IAM role to create it from. The role that creates the cluster is a permanent, and rather hidden, full admin role that doesn't appear in nor is subject to the aws-auth config map. So, you want a dedicated role explicity for that purpose like CDK does for you here that you can then restrict access to assume unless you need it (e.g. you lock yourself out of the cluster with by making a mistake in the aws-auth configmap).
     1. A new Managed Node Group with 3 x m5.large instances spread across 3 Availability Zones.
-1. The AWS Load Balancer Controller (https://kubernetes-sigs.github.io/aws-load-balancer-controller) to allow you to seamlessly use ALBs for Ingress and NLB for Services.
-1. External DNS (https://github.com/kubernetes-sigs/external-dns) to allow you to automatically create/update Route53 entries to point your 'real' names at your Ingresses and Services.
-1. A new managed Amazon Elasticsearch Domain and an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
-1. (Temporarily until the AWS Managed Prometheus/Grafana are available) The kube-prometheus Operator (https://github.com/prometheus-operator/kube-prometheus) which gives you a Prometheus that will collect all your cluster metrics as well as a Grafana to visualise them.
+1. (Optional) The AWS Load Balancer Controller (https://kubernetes-sigs.github.io/aws-load-balancer-controller) to allow you to seamlessly use ALBs for Ingress and NLB for Services.
+1. (Optional) External DNS (https://github.com/kubernetes-sigs/external-dns) to allow you to automatically create/update Route53 entries to point your 'real' names at your Ingresses and Services.
+1. (Optional) A new managed Amazon Elasticsearch Domain and an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
+1. (Optional) (Temporarily until the AWS Managed Prometheus/Grafana are available) The kube-prometheus Operator (https://github.com/prometheus-operator/kube-prometheus) which gives you a Prometheus that will collect all your cluster metrics as well as a Grafana to visualise them.
     1. TODO: Add some initial alerts for sensible common items in the cluster via Prometheus/Alertmanager
-1. The AWS EBS CSI Driver (https://github.com/kubernetes-sigs/aws-ebs-csi-driver)
-1. The AWS EFS CSI Driver (https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html)
-1. A OPA Gatekeeper to enforce prevenetative secruity and operational policies (https://github.com/open-policy-agent/gatekeeper)
+1. (Optional) The AWS EBS CSI Driver (https://github.com/kubernetes-sigs/aws-ebs-csi-driver)
+1. (Optional) The AWS EFS CSI Driver (https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html)
+1. (Optional) A OPA Gatekeeper to enforce prevenetative secruity and operational policies (https://github.com/open-policy-agent/gatekeeper)
     1. TODO: Add some sensible initial policies to make our cluster 'secure by default'
-1. The cluster autoscaler (CA) (https://github.com/kubernetes/autoscaler)
-1. The metrics-server (required for the Horizontal Pod Autoscaler (HPA)) (https://github.com/kubernetes-sigs/metrics-server)
-1. (Optional) A GitOps Pipeline based on CodeBuild doing another `cdk deploy` whenever `eks_cluster.py` changes
+1. (Optional) The cluster autoscaler (CA) (https://github.com/kubernetes/autoscaler)
+1. (Optional) The metrics-server (required for the Horizontal Pod Autoscaler (HPA)) (https://github.com/kubernetes-sigs/metrics-server)
+1. (Optional) The Calico Network Policy Provider (https://docs.aws.amazon.com/eks/latest/userguide/calico.html)
+1. (Optional) The AWS Simple Systems Manager (SSM) agent
+
+For each optional item there is a boolean at the top of `cluster-bootstrap\eks_cluster.py` that you flip to True/False
 
 ### Why Cloud Development Kit (CDK)?
 
