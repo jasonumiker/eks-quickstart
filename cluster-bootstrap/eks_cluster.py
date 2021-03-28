@@ -22,7 +22,7 @@ import os
 deploy_bastion = True
 
 # Deploy Client VPN?
-deploy_client_vpn = True
+deploy_client_vpn = False
 
 # If VPN = True then create and upload your client and server certs as per putting the ARNs below
 # https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
@@ -656,7 +656,7 @@ class EKSClusterStack(core.Stack):
             # Output the Kibana address in our CloudFormation Stack
             core.CfnOutput(
                 self, "KibanaAddress",
-                value=es_domain.domain_endpoint + "/_plugin/kibana/",
+                value="https://" + es_domain.domain_endpoint + "/_plugin/kibana/",
                 description="Private endpoint for this EKS environment's Kibana to consume the logs",
 
             )
@@ -1115,7 +1115,7 @@ class EKSClusterStack(core.Stack):
         # Deploy SSM Agent
         if (deploy_ssm_agent is True):
             # For more information see https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/install-ssm-agent-on-amazon-eks-worker-nodes-by-using-kubernetes-daemonset.html
-            eks_cluster.add_manifest("SSMAgentManifest",
+            ssm_agent_manifest = eks_cluster.add_manifest("SSMAgentManifest",
                 {
                 "apiVersion": "apps/v1",
                 "kind": "DaemonSet",
@@ -1243,13 +1243,20 @@ class EKSClusterStack(core.Stack):
             code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
             code_server_instance.user_data.add_commands("chmod +x ./kubectl")
             code_server_instance.user_data.add_commands("mv ./kubectl /usr/local/bin")
-            
+            code_server_instance.user_data.add_commands("curl https://intoli.com/install-google-chrome.sh | bash")
+            code_server_instance.user_data.add_commands("~/.local/bin/code-server --install-extension auchenberg.vscode-browser-preview")
+            code_server_instance.user_data.add_commands("aws eks update-kubeconfig --name " + eks_cluster.cluster_name + " --region " + self.region)
+        
             # Output the Bastion adddress
             core.CfnOutput(
                 self, "BastionAddress",
                 value="http://"+code_server_instance.instance_public_ip+":8080",
                 description="Address to reach your Bastion's VS Code Web UI",
             )
+
+            # Wait to deploy Bastion until cluster is up
+            code_server_instance.node.add_dependency(ssm_agent_manifest)
+            
         
         if (deploy_client_vpn is True):
             # Create and upload your client and server certs as per https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
