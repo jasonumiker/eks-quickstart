@@ -10,12 +10,14 @@ phases:
   pre_build:
     commands:
       - cd cluster-bootstrap
-      - npm install -g aws-cdk
+      - npm install --upgrade -g aws-cdk
       - pip install --upgrade -r requirements.txt
       - export CDK_DEPLOY_ACCOUNT=$(aws sts get-caller-identity | jq -r '.Account')
       - export CDK_DEPLOY_REGION=$AWS_REGION
   build:
     commands:
+      - echo CDK Bootstrap started on `date`
+      - cdk bootstrap
       - echo CDK Deploy started on `date`
       - cdk deploy --require-approval never
   post_build:
