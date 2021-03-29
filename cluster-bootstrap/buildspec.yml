@@ -16,6 +16,8 @@ phases:
       - export CDK_DEPLOY_REGION=$AWS_REGION
   build:
     commands:
+      - echo Create service linked role for Elaasticsearch on `date`
+      - aws iam create-service-linked-role --aws-service-name es.amazonaws.com
       - echo CDK Bootstrap started on `date`
       - cdk bootstrap
       - echo CDK Deploy started on `date`
