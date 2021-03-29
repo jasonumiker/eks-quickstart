@@ -17,6 +17,8 @@ from aws_cdk import (
 )
 import os
 
+from ekslogs_custom_resource import EKSLogsObjectResource
+
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
 # The preferred option is to use a Client VPN instead so this defaults to False
 deploy_bastion = True
@@ -1311,6 +1313,14 @@ class EKSClusterStack(core.Stack):
                 client_vpn_endpoint_id=endpoint.ref,
                 subnet_id=eks_vpc.private_subnets[0].subnet_id
             )
+
+        # Enable control plane logging which requires a Custom Resource until it has proper
+        # CloudFormation support that CDK can leverage
+        EKSLogsObjectResource(
+            self, "EKSLogsObjectResource",
+            eks_name=eks_cluster.cluster_name,
+            eks_arn=eks_cluster.cluster_arn
+        )
 
 app = core.App()
 # Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that
