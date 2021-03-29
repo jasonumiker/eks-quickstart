@@ -26,8 +26,8 @@ deploy_client_vpn = False
 
 # If VPN = True then create and upload your client and server certs as per putting the ARNs below
 # https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
-client_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/6b85eefd-56b3-4461-8dda-19613170ba2d"
-server_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/9b30b41a-89a1-416b-b2d2-bc76c26e9f15"
+client_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
+server_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
 
 # CIDR Block for VPN Clients (has to be at least a /22)
 vpn_client_cidr_block="10.1.0.0/22"
@@ -109,6 +109,7 @@ class EKSClusterStack(core.Stack):
             }
             cluster_admin_role.add_to_policy(iam.PolicyStatement.from_json(cluster_admin_policy_statement_json_1))
         else:
+            # You'll also need to add a trust relationship to ec2.amazonaws.com to sts:AssumeRole to this as well
             cluster_admin_role = iam.Role.from_role_arn(self, "ClusterAdminRole",
                 role_arn=existing_role_arn
             )
@@ -1189,7 +1190,7 @@ class EKSClusterStack(core.Stack):
             # Create an Instance Profile for our Admin Role to assume w/EC2
             cluster_admin_role_instance_profile = iam.CfnInstanceProfile(
                 self, "ClusterAdminRoleInstanceProfile",
-                roles=[cluster_admin_role.role_name]        
+                roles=[cluster_admin_role.role_name] 
             )
             
             # Create code-server bastion
@@ -1254,7 +1255,8 @@ class EKSClusterStack(core.Stack):
                 description="Address to reach your Bastion's VS Code Web UI",
             )
 
-            # Wait to deploy Bastion until cluster is up
+            # Wait to deploy Bastion until cluster is up and we're deploying manifests/charts to it
+            # This could be any of the charts/manifests I just picked this one at random
             code_server_instance.node.add_dependency(ssm_agent_manifest)
             
         

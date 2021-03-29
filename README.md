@@ -84,13 +84,19 @@ If you set `deploy_bastion` to `True` in `eks_cluster.py` then the template will
 
 The stack will have an Output with the address to the Bastion and the password for the web interface defaults to the Instance ID of the Bastion Instance (which you can get from the EC2 Console).
 
-**_NOTE:_** Since this defaults to HTTP rather than HTTPS to accomodate accounts without a public Route 53 Zone and associated certificates that means that modern browsers won't allow you to paste with Ctrl-V. You can, however, paste with Shift-Insert.
+**_NOTE:_** Since this defaults to HTTP rather than HTTPS to accomodate accounts without a public Route 53 Zone and associated certificates that means that modern browsers won't allow you to paste with Ctrl-V. You can, however, paste with shift-insert (insert = fn + return on a Mac so shift-fn-return on one of those).
+
+Here are a few things to familiarise yourself with the Bastion:
+
+- Click the three dashes (I call it the hambuger menu) in the upper left corrner then click `Terminal` and then `New Terminal`.
+- Run `kubectl get nodes` and see that we've already installed the tools for you and run the `aws eks update-kubeconfig` and it is all working
+- Click the three dashes in the upper left then click View then Command Palette. In that box type Browser Preview and choose `Browser Preview: Open Preview`. This browser is running on the Instance in the private VPC and you can use this browser to reach Kibana and Grafana etc.
 
 ## Set up your Client VPN to access the environment
 
 If you set `deploy_vpn` to `True` in `eks_cluster.py` then the template will deploy a Client VPN.
 
-You need to create client and server certificates and upload them to ACM by following these instructions - https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual. Then you update `ekscluster.py` with the certificate ARNs.
+You'll also need to create client and server certificates and upload them to ACM by following these instructions - https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual. Then you update `ekscluster.py` with the certificate ARNs.
 
 Once it has created your VPN you then need to configure the client:
 
