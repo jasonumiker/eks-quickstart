@@ -322,7 +322,7 @@ class EKSClusterStack(core.Stack):
                 "aws-load-balancer-controller",
                 chart="aws-load-balancer-controller",
                 version="1.1.5",
-                release="awslbcontroller-1-1-5",
+                release="awslbcontroller",
                 repository="https://aws.github.io/eks-charts",
                 namespace="kube-system",
                 values={
@@ -377,7 +377,7 @@ class EKSClusterStack(core.Stack):
                 "external-dns",
                 chart="external-dns",
                 version="4.9.0",
-                release="externaldns-4-9-0",
+                release="externaldns",
                 repository="https://charts.bitnami.com/bitnami",
                 namespace="kube-system",
                 values={
@@ -437,7 +437,7 @@ class EKSClusterStack(core.Stack):
                 "aws-ebs-csi-driver",
                 chart="aws-ebs-csi-driver",
                 version="0.9.14",
-                release="awsebscsidriver-0-9-14",
+                release="awsebscsidriver",
                 repository="https://kubernetes-sigs.github.io/aws-ebs-csi-driver",
                 namespace="kube-system",
                 values={
@@ -510,7 +510,7 @@ class EKSClusterStack(core.Stack):
                 "aws-efs-csi-driver",
                 chart="aws-efs-csi-driver",
                 version="1.1.1",
-                release="awsefscsidriver-1-1-1",
+                release="awsefscsidriver",
                 repository="https://kubernetes-sigs.github.io/aws-efs-csi-driver/",
                 namespace="kube-system",
                 values={
@@ -555,7 +555,7 @@ class EKSClusterStack(core.Stack):
                 "cluster-autoscaler",
                 chart="cluster-autoscaler",
                 version="9.7.0",
-                release="clusterautoscaler-9-7-0",
+                release="clusterautoscaler",
                 repository="https://kubernetes.github.io/autoscaler",
                 namespace="kube-system",
                 values={
@@ -629,7 +629,7 @@ class EKSClusterStack(core.Stack):
                 "fluentbit",
                 chart="aws-for-fluent-bit",
                 version="0.1.6",
-                release="fluentbit-0-1-6",
+                release="fluentbit",
                 repository="https://aws.github.io/eks-charts",
                 namespace="kube-system",
                 values={
@@ -670,7 +670,7 @@ class EKSClusterStack(core.Stack):
                 "metrics",
                 chart="kube-prometheus-stack",
                 version="14.0.1",
-                release="prometheus-14-0-1",
+                release="prometheus",
                 repository="https://prometheus-community.github.io/helm-charts",
                 namespace="kube-system",
                 values={
@@ -756,7 +756,7 @@ class EKSClusterStack(core.Stack):
                 "metrics-server",
                 chart="metrics-server",
                 version="5.8.0",
-                release="metricsserver-5-8-0",
+                release="metricsserver",
                 repository="https://charts.bitnami.com/bitnami",
                 namespace="kube-system",
                 values={
@@ -771,7 +771,7 @@ class EKSClusterStack(core.Stack):
                 "gatekeeper",
                 chart="gatekeeper",
                 version="3.4.0-beta.0",
-                release="gatekeeper-3-4-0-beta",
+                release="gatekeeper",
                 repository="https://open-policy-agent.github.io/gatekeeper/charts",
                 namespace="kube-system"
             )
@@ -1095,7 +1095,7 @@ class EKSClusterStack(core.Stack):
                 "calico",
                 chart="aws-calico",
                 version="0.3.4",
-                release="calico-0-3-4",
+                release="calico",
                 repository="https://aws.github.io/eks-charts",
                 namespace="kube-system"
             )
