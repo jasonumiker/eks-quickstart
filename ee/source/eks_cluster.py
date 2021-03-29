@@ -52,7 +52,7 @@ existing_vpc_name="VPC"
 create_new_cluster_admin_role = False
 
 # If create_new_cluster_admin_role is False then provide the ARN of the existing role to use
-existing_role_arn=core.Fn.join("",["arn:aws:sts::",core.Fn.ref("AWS::AccountId"),":assumed-role/TeamRole/MasterKey"])}
+existing_role_arn=core.Fn.join("",["arn:aws:sts::",core.Fn.ref("AWS::AccountId"),":assumed-role/TeamRole/MasterKey"])
 
 # Deploy the AWS Load Balancer Controller?
 deploy_aws_lb_controller = True
