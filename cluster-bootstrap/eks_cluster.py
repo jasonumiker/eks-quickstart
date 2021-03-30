@@ -1254,6 +1254,7 @@ class EKSClusterStack(core.Stack):
             code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
             code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
             code_server_instance.user_data.add_commands("echo \"/root/.local/bin/code-server &\" >> /etc/rc.d/rc.local")
+            code_server_instance.user_data.add_commands("chmod +x /etc/rc.d/rc.local")
             code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
             code_server_instance.user_data.add_commands("chmod +x ./kubectl")
             code_server_instance.user_data.add_commands("mv ./kubectl /usr/bin")
