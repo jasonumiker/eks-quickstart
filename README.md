@@ -8,6 +8,7 @@ This project is an example of how you can combine the AWS Cloud Development Kit 
 1. A new EKS cluster with:
     1. A dedicated new IAM role to create it from. The role that creates the cluster is a permanent, and rather hidden, full admin role that doesn't appear in nor is subject to the aws-auth config map. So, you want a dedicated role explicity for that purpose like CDK does for you here that you can then restrict access to assume unless you need it (e.g. you lock yourself out of the cluster with by making a mistake in the aws-auth configmap).
     1. A new Managed Node Group with 3 x m5.large instances spread across 3 Availability Zones.
+    1. All control plane logging to CloudWatch Logs enabled
 1. (Optional) The AWS Load Balancer Controller (https://kubernetes-sigs.github.io/aws-load-balancer-controller) to allow you to seamlessly use ALBs for Ingress and NLB for Services.
 1. (Optional) External DNS (https://github.com/kubernetes-sigs/external-dns) to allow you to automatically create/update Route53 entries to point your 'real' names at your Ingresses and Services.
 1. (Optional) A new managed Amazon Elasticsearch Domain and an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
@@ -161,5 +162,4 @@ TODO: Walk through how to upgrade an individual add-on manifest/chart via CDK
 
 ## Outstanding Issues
 
-* The CDK currently doesn't support enabling the logs on the control plane - https://github.com/aws/aws-cdk/issues/4159. If it appears that will be the case for awhile will investigate other ways to automate that in this script such as a CloudFormation custom resource
 * Investigate replacing the current instance ID password for the Bastion with something more secure such as generating a longer string and storing it in Secrets Manager
