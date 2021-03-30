@@ -139,7 +139,22 @@ TODO: Walk through how to do a few basic things in Kibana with searching and das
 
 ## Checking out Grafana and the out-of-the-box metrics dashboards
 
-TODO: Walk through how to get to the out-of-the-box metrics dashboards in Grafana
+We have deployed an in-VPC private Network Load Balancer (NLB) to access your Grafana service to visualise the metrics from the Prometheus we've deployed onto the cluster.
+
+To access this enter the following command `get service grafana-nlb --namespace=kube-system` to find the address of this under EXTERNAL-IP. Alternatively, you can find the Grafana NLB in the AWS EC2 console and get its address from there.
+
+Once you go to that page the default login/password is admin/prom-operator.
+
+There are some default dashboards that ship with this which you can see by going to Home on top. This will take you to a list view of the available dashboards. Some good ones to check out include:
+
+- Kubernetes / Compute Resources / Cluster
+    - This gives you a whole cluster view
+- Kubernetes / Compute Resources / Namespace (Pods)
+    - There is a namespace dropdown at the top and it'll show you the graphs including the consumption in that namespace broken down by Pod
+- Kubernetes / Compute Resources / Namespace (Workloads)
+    - Similar to the Pod view but instead focuses on Deployment, StatefulSet and DaemonSet views
+
+Within all of these dashboards you can click on names as links and it'll drill down to show you details relevant to that item.
 
 ## Deploy some sample apps to explore our new Kubernetes environment and its features
 
