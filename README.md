@@ -120,16 +120,9 @@ Then you should be able to run a `kubectl get all -A` and see everything running
 
 We put the Elasticsearch both in the VPC (i.e. not on the Internet) as well as in the same Security Group we use for controlling access to our EKS Control Plane. 
 
-We did this so that when we put the Client VPN in that security group as well then it has access from a network perspective to *both* manage EKS and Elasticsearch/Kibana.
+We did this so that when we allow the Bastion or Client VPN in that security group then it has access from a network perspective to *both* manage EKS and Elasticsearch/Kibana.
 
-Since this ElasticSearch can only be reached from a network perspective if you are running within this VPC, or have private access to it via a VPN or DirectConnect, then it is not that risky to allow 'open access' to it - especially in a Proof of Concept (POC) environment.
-
-In order to do this:
-
-1. Go to the Amazon Elaticsearch Service within the AWS Console
-1. Click on the Domain that starts with eksclus-
-1. Click on the Actions button on top and choose Modify Access Policy
-1. In the Domain access policy dropdown choose "Allow open access to the domain" and click Submit
+Since this ElasticSearch can only be reached from a network perspective if you are running within this VPC, or have private access to it via a VPN or DirectConnect, then it is not that risky to allow 'open access' to it - especially in a Proof of Concept (POC) environment. As such, we've configured its default access policy so that no login and password as long as you can reach it from a network perspective.
 
 ### Connect to Kibana and do initial setup
 

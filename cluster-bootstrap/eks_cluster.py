@@ -159,6 +159,7 @@ class EKSClusterStack(core.Stack):
             endpoint_access=eks.EndpointAccess.PRIVATE,
             version=eks.KubernetesVersion.V1_19
         )
+        eks_cluster.default_nodegroup.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
 
         # AWS Load Balancer Controller
         if (deploy_aws_lb_controller is True):
@@ -593,6 +594,14 @@ class EKSClusterStack(core.Stack):
                 volume_type=ec2.EbsDeviceVolumeType.GP2,
                 volume_size=10
             )
+            es_access_policy_statement_json_1 = {
+                "Effect": "Allow",
+                "Action": "es:*",
+                "Principal": {
+                    "AWS": "*"
+                },
+                "Resource": "*"
+            }
             es_domain = es.Domain(
                 self, "ESDomain",
                 removal_policy=core.RemovalPolicy.DESTROY,
@@ -602,7 +611,8 @@ class EKSClusterStack(core.Stack):
                     security_groups=[eks_cluster.cluster_security_group]
                 ),
                 capacity=es_capacity,
-                ebs=es_ebs
+                ebs=es_ebs,
+                access_policies=[iam.PolicyStatement.from_json(es_access_policy_statement_json_1)]
             )
             
             # Create the Service Account
@@ -1119,71 +1129,71 @@ class EKSClusterStack(core.Stack):
         if (deploy_ssm_agent is True):
             # For more information see https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/install-ssm-agent-on-amazon-eks-worker-nodes-by-using-kubernetes-daemonset.html
             ssm_agent_manifest = eks_cluster.add_manifest("SSMAgentManifest",
-                {
-                "apiVersion": "apps/v1",
-                "kind": "DaemonSet",
-                "metadata": {
-                    "labels": {
-                    "k8s-app": "ssm-installer"
+            {
+                "apiVersion":"apps/v1",
+                "kind":"DaemonSet",
+                "metadata":{
+                    "labels":{
+                        "k8s-app":"ssm-installer"
                     },
-                    "name": "ssm-installer",
-                    "namespace": "default"
+                    "name":"ssm-installer",
+                    "namespace":"default"
                 },
-                "spec": {
-                    "selector": {
-                    "matchLabels": {
-                        "k8s-app": "ssm-installer"
-                    }
-                    },
-                    "template": {
-                    "metadata": {
-                        "labels": {
-                        "k8s-app": "ssm-installer"
+                "spec":{
+                    "selector":{
+                        "matchLabels":{
+                            "k8s-app":"ssm-installer"
                         }
                     },
-                    "spec": {
-                        "containers": [
-                        {
-                            "image": "amazonlinux",
-                            "imagePullPolicy": "Always",
-                            "name": "ssm",
-                            "command": [
-                            "/bin/bash"
-                            ],
-                            "args": [
-                            "-c",
-                            "echo '* * * * * root yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm & rm -rf /etc/cron.d/ssmstart' > /etc/cron.d/ssmstart"
-                            ],
-                            "securityContext": {
-                            "allowPrivilegeEscalation": True
-                            },
-                            "volumeMounts": [
+                    "template":{
+                        "metadata":{
+                            "labels":{
+                            "k8s-app":"ssm-installer"
+                            }
+                        },
+                        "spec":{
+                            "containers":[
                             {
-                                "mountPath": "/etc/cron.d",
-                                "name": "cronfile"
+                                "image":"amazonlinux",
+                                "imagePullPolicy":"Always",
+                                "name":"ssm",
+                                "command":[
+                                    "/bin/bash"
+                                ],
+                                "args":[
+                                    "-c",
+                                    "echo '* * * * * root yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm & rm -rf /etc/cron.d/ssmstart' > /etc/cron.d/ssmstart"
+                                ],
+                                "securityContext":{
+                                    "allowPrivilegeEscalation":True
+                                },
+                                "volumeMounts":[
+                                    {
+                                        "mountPath":"/etc/cron.d",
+                                        "name":"cronfile"
+                                    }
+                                ],
+                                "terminationMessagePath":"/dev/termination-log",
+                                "terminationMessagePolicy":"File"
                             }
                             ],
-                            "terminationMessagePath": "/dev/termination-log",
-                            "terminationMessagePolicy": "File"
-                        }
-                        ],
-                        "volumes": [
-                        {
-                            "name": "cronfile",
-                            "hostPath": {
-                            "path": "/etc/cron.d",
-                            "type": "Directory"
+                            "volumes":[
+                            {
+                                "name":"cronfile",
+                                "hostPath":{
+                                    "path":"/etc/cron.d",
+                                    "type":"Directory"
+                                }
                             }
+                            ],
+                            "dnsPolicy":"ClusterFirst",
+                            "restartPolicy":"Always",
+                            "schedulerName":"default-scheduler",
+                            "terminationGracePeriodSeconds":30
                         }
-                        ],
-                        "dnsPolicy": "ClusterFirst",
-                        "restartPolicy": "Always",
-                        "schedulerName": "default-scheduler",
-                        "terminationGracePeriodSeconds": 30
-                    }
                     }
                 }
-                })
+            })
                 
         # If you have a 'True' in the deploy_bastion variable at the top of the file we'll deploy
         # a basion server that you can connect to VS Code via HTTP on port 8080 on the public IP
@@ -1244,7 +1254,6 @@ class EKSClusterStack(core.Stack):
             code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
             code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
             code_server_instance.user_data.add_commands("echo \"/root/.local/bin/code-server &\" >> /etc/rc.d/rc.local")
-            code_server_instance.user_data.add_commands("chmod +x /etc/rc.d/rc.local")
             code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
             code_server_instance.user_data.add_commands("chmod +x ./kubectl")
             code_server_instance.user_data.add_commands("mv ./kubectl /usr/bin")
