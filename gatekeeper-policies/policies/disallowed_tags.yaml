@@ -2,6 +2,7 @@ apiVersion: templates.gatekeeper.sh/v1beta1
 kind: ConstraintTemplate
 metadata:
   name: k8sdisallowedtags
+  namespace: kube-system
   annotations:
     description: Requires container images to have an image tag different
       from the ones in a specified list.

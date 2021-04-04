@@ -77,6 +77,9 @@ deploy_aws_efs_csi = True
 # Deploy OPA Gatekeeper?
 deploy_opa_gatekeeper = True
 
+# Deploy example Gatekeeper policies?
+deploy_gatekeeper_policies = True
+
 # Deploy Cluster Autoscaler?
 deploy_cluster_autoscaler = True
 
@@ -1333,6 +1336,24 @@ class EKSClusterStack(core.Stack):
             eks_name=eks_cluster.cluster_name,
             eks_arn=eks_cluster.cluster_arn
         )
+
+        if (deploy_gatekeeper_policies is True):
+            # For more info see https://github.com/jasonumiker/eks-quickstart/tree/main/gatekeeper-policies and 
+            flux_gatekeeper_chart = eks_cluster.add_helm_chart(
+                "flux-gatekeeper",
+                chart="fluxcd",
+                version="1.8.0",
+                release="flux-gatekeeper",
+                repository="https://charts.fluxcd.io",
+                namespace="kube-system",
+                values={
+                    "git": {
+                        "url": "ssh://git@github.com/jasonumiker/eks-quickstart",
+                        "branch": "main",
+                        "path": "gatekeeper-policies"
+                    }
+                }
+            )
 
 app = core.App()
 # Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that
