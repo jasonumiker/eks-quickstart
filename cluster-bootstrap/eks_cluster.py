@@ -1137,7 +1137,7 @@ class EKSClusterStack(core.Stack):
                         "k8s-app":"ssm-installer"
                     },
                     "name":"ssm-installer",
-                    "namespace":"default"
+                    "namespace":"kube-system"
                 },
                 "spec":{
                     "selector":{
