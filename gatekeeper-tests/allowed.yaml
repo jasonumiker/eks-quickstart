@@ -1,9 +1,10 @@
+# This is an example of a PodSpec that passes all our default checks
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-tags-disallowed
+  name: nginx-allowed
   labels:
-    app: nginx-tags-disallowed
+    app: nginx-allowed
 spec:
   securityContext:
     supplementalGroups:
@@ -11,7 +12,7 @@ spec:
     fsGroup: 101
   containers:
     - name: nginx
-      image: nginxinc/nginx-unprivileged:latest
+      image: nginxinc/nginx-unprivileged:1.19
       resources:
         limits:
           cpu: 1

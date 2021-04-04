@@ -3,15 +3,32 @@ kind: Pod
 metadata:
   name: nginx-users-disallowed
   labels:
-    app: nginx-users
+    app: nginx-users-disallowed
 spec:
-  securityContext:
-    supplementalGroups:
-      - 0
-    fsGroup: 0
   containers:
     - name: nginx
-      image: nginx
+      image: nginxinc/nginx-unprivileged:1.19
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+        requests:
+          cpu: 1
+          memory: 1Gi
+      ports:
+      - containerPort: 8080
+        protocol: TCP
       securityContext:
-        runAsUser: 0
-        runAsGroup: 0
+        capabilities:
+          drop:
+            - ALL
+      readinessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /index.html
+            port: 8080
+      livenessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /index.html
+            port: 8080

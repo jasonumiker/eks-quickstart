@@ -1,21 +1,33 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: opa-disallowed
+  name: nginx-containers-resource-ratios-disallowed
   labels:
-    owner: me.agilebank.demo
+    app: nginx-containers-resource-ratios-disallowed
 spec:
+  securityContext:
+    supplementalGroups:
+      - 101
+    fsGroup: 101
   containers:
-    - name: opa
-      image: openpolicyagent/opa:0.9.2
-      args:
-        - "run"
-        - "--server"
-        - "--addr=localhost:8080"
-      resources:
-        limits:
-          cpu: "200m"
-          memory: "200Mi"
-        requests:
-          cpu: "100m"
-          memory: "100Mi"
+    - name: nginx
+      image: nginxinc/nginx-unprivileged:1.19
+      ports:
+      - containerPort: 8080
+        protocol: TCP
+      securityContext:
+        runAsUser: 101
+        runAsGroup: 101
+        capabilities:
+          drop:
+            - ALL
+      readinessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /index.html
+            port: 8080
+      livenessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /index.html
+            port: 8080
