@@ -79,6 +79,17 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. Run `cdk deploy --require-approval never`
 1. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-0-1-6-aws-for-fluent-bit --namespace=cluster-addons` and add the following to the bottom `Replace_Dots On`
 
+### Finish setup of Flux for GitOps deployment of gatekeeper-policies
+
+We've deployed Flux to deploy - and then keep in sync via GitOps - our default Gatekeeper policies and constraints. In order for that to work, though, we'll need to get the SSH key that Flux generated and add it to GitHub to give us the required access.
+
+fluxctl and the required access is set up on the Bastion - if you have deployed that:
+
+1. Connect to the Bastion via Systems Manager Session Manager or code-server
+1. Run `fluxctl identity --k8s-fwd-ns kube-system`
+1. Take the SSH key that has been ouput and add it to GitHub by following these instructions - https://docs.github.com/en/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account
+1. (Optional) If you don't want to wait up to 5 minutes for Flux to sync you can run `fluxctl sync --k8s-fwd-ns kube-system`
+
 ## Deploy and set up a Bastion based on an EC2 instance running Code Server
 
 If you set `deploy_bastion` to `True` in `eks_cluster.py` then the template will deploy an EC2 instance running [Code Server](https://github.com/cdr/code-server) which is Visual Studio Code but running in your browser.
