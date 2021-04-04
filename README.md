@@ -5,37 +5,38 @@ This project is an example of how you can combine the AWS Cloud Development Kit 
 ## What does this QuickStart create for you:
 
 1. (Optional) An appropriate VPC (/22 CDIR w/1024 IPs by default - though you can edit this in `eks_cluster.py`) with public and private subnets across three availabilty zones.
+    1. Alternatively, just flip `create_new_vpc` to `False` and then specify the name of your VPC under `existing_vpc_name` in `eks_cluster.py`
 1. A new EKS cluster with:
     1. A dedicated new IAM role to create it from. The role that creates the cluster is a permanent, and rather hidden, full admin role that doesn't appear in nor is subject to the aws-auth config map. So, you want a dedicated role explicity for that purpose like CDK does for you here that you can then restrict access to assume unless you need it (e.g. you lock yourself out of the cluster with by making a mistake in the aws-auth configmap).
     1. A new Managed Node Group with 3 x m5.large instances spread across 3 Availability Zones.
     1. All control plane logging to CloudWatch Logs enabled
 1. (Optional) The AWS Load Balancer Controller (https://kubernetes-sigs.github.io/aws-load-balancer-controller) to allow you to seamlessly use ALBs for Ingress and NLB for Services.
 1. (Optional) External DNS (https://github.com/kubernetes-sigs/external-dns) to allow you to automatically create/update Route53 entries to point your 'real' names at your Ingresses and Services.
-1. (Optional) A new managed Amazon Elasticsearch Domain and an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
-1. (Optional) (Temporarily until the AWS Managed Prometheus/Grafana are available) The kube-prometheus Operator (https://github.com/prometheus-operator/kube-prometheus) which gives you a Prometheus that will collect all your cluster metrics as well as a Grafana to visualise them.
+1. (Optional) A new managed Amazon Elasticsearch Domain behind a private PC endpoint as well as an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
+1. (Optional) (Temporarily until the AWS Managed Prometheus/Grafana are available) The kube-prometheus Operator (https://github.com/prometheus-operator/kube-prometheus) which deploys you a Prometheus on your cluster that will collect all your cluster metrics as well as a Grafana to visualise them.
     1. TODO: Add some initial alerts for sensible common items in the cluster via Prometheus/Alertmanager
-1. (Optional) The AWS EBS CSI Driver (https://github.com/kubernetes-sigs/aws-ebs-csi-driver)
-1. (Optional) The AWS EFS CSI Driver (https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html)
+1. (Optional) The AWS EBS CSI Driver (https://github.com/kubernetes-sigs/aws-ebs-csi-driver). Note that new development on EBS functionality has moved out of the Kubernetes mainline to this externalised CSI driver.
+1. (Optional) The AWS EFS CSI Driver (https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html). Note that new development on EFS functionality has moved out of the Kubernetes mainline to this externalised CSI driver.
 1. (Optional) A OPA Gatekeeper to enforce prevenetative secruity and operational policies (https://github.com/open-policy-agent/gatekeeper)
     1. TODO: Add some sensible initial policies to make our cluster 'secure by default'
-1. (Optional) The cluster autoscaler (CA) (https://github.com/kubernetes/autoscaler)
+1. (Optional) The cluster autoscaler (CA) (https://github.com/kubernetes/autoscaler). This will scale your EC2 instances to ensure you have enough capacity to launch all of your Pods as they are deployed/scaled.
 1. (Optional) The metrics-server (required for the Horizontal Pod Autoscaler (HPA)) (https://github.com/kubernetes-sigs/metrics-server)
-1. (Optional) The Calico Network Policy Provider (https://docs.aws.amazon.com/eks/latest/userguide/calico.html)
-1. (Optional) The AWS Simple Systems Manager (SSM) agent
+1. (Optional) The Calico Network Policy Provider (https://docs.aws.amazon.com/eks/latest/userguide/calico.html). This enforces any [NetworkPolicies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) that you specify.
+1. (Optional) The AWS Systems Manager (SSM) agent. This allows for various management activities (e.g. Inventory, Patching, Session Mnaager, etc.) of your Instances/Nodes by AWS Systems Manager.
 
 For each optional item there is a boolean at the top of `cluster-bootstrap\eks_cluster.py` that you flip to True/False
 
 ### Why Cloud Development Kit (CDK)?
 
-The Cloud Development Kit is a tool where you can write infrastucture-as-code with 'actual' code (TypeScript, Python, C#, and Java). This takes these lanugages and 'compiles' them into a CloudFormation template for the AWS CloudFormation engine to then deploy and manage as stacks.
+The Cloud Development Kit (CDK) is a tool where you can write infrastucture-as-code with 'actual' code (TypeScript, Python, C#, and Java). This takes these lanugages and 'compiles' them into a CloudFormation template for the AWS CloudFormation engine to then deploy and manage as stacks.
 
-When you develop with the CDK you then don't edit the intermediate CloudFormation but let CDK regenerate it in reponse to changes in the upstream template.
+When you develop and deploy infrastructure with the CDK you don't edit the intermediate CloudFormation but, instead, let CDK regenerate it in reponse to changes in the upstream CDK code.
 
 What makes CDK uniquely good when it comes to our EKS Quickstart is:
 
-* It handles the IAM Roles for Service Accounts (IRSA) rather elegantly and creates the IAM Roles and Policies, creates the service accounts and then maps them to each other.
+* It handles the IAM Roles for Service Accounts (IRSA) rather elegantly and creates the IAM Roles and Policies, creates the Kubernetes service accounts, and then maps them to each other.
 * It has implemented custom CloudFormation resources with Lambda invoking kubectl and helm to deploy manifests and charts as part of the cluster provisioning.
-    * Until we have Managed Add-On for the common things with EKS this can fill the gap and provision us a complete cluster with all the add-ons we need.
+    * Until we have [Managed Add-Ons](https://aws.amazon.com/blogs/containers/introducing-amazon-eks-add-ons/) for the common things with EKS like the above this can fill the gap and provision us a complete cluster with all the add-ons we need.
 
 ## Getting started
 
@@ -85,7 +86,7 @@ If you set `deploy_bastion` to `True` in `eks_cluster.py` then the template will
 
 The stack will have an Output with the address to the Bastion and the password for the web interface defaults to the Instance ID of the Bastion Instance (which you can get from the EC2 Console).
 
-**_NOTE:_** Since this defaults to HTTP rather than HTTPS to accomodate accounts without a public Route 53 Zone and associated certificates that means that modern browsers won't allow you to paste with Ctrl-V. You can, however, paste with shift-insert (insert = fn + return on a Mac so shift-fn-return on one of those).
+**_NOTE:_** Since this defaults to HTTP rather than HTTPS to accomodate accounts without a public Route 53 Zone and associated certificates that means that modern browsers won't allow you to paste with Ctrl-V. You can, however, paste with shift-insert (insert = fn + return on a Mac so shift-fn-return on a Mac to paste).
 
 Here are a few things to familiarise yourself with the Bastion:
 
@@ -97,7 +98,7 @@ Here are a few things to familiarise yourself with the Bastion:
 
 If you set `deploy_vpn` to `True` in `eks_cluster.py` then the template will deploy a Client VPN.
 
-You'll also need to create client and server certificates and upload them to ACM by following these instructions - https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual. Then you update `ekscluster.py` with the certificate ARNs.
+Note that you'll also need to create client and server certificates and upload them to ACM by following these instructions - https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual - and update `ekscluster.py` with the certificate ARNs for this to work.
 
 Once it has created your VPN you then need to configure the client:
 
@@ -118,11 +119,11 @@ Then you should be able to run a `kubectl get all -A` and see everything running
 
 ## Allow access to the Elasticsearch and Kibana to query your logs
 
-We put the Elasticsearch both in the VPC (i.e. not on the Internet) as well as in the same Security Group we use for controlling access to our EKS Control Plane. 
+We put the Elasticsearch both in the VPC (i.e. not on the Internet) as well as within the same Security Group we use for controlling access to our EKS Control Plane.
 
-We did this so that when we allow the Bastion or Client VPN in that security group then it has access from a network perspective to *both* manage EKS and Elasticsearch/Kibana.
+We did this so that when we allow the Bastion or Client VPN access to that security group then it has access from a network perspective to *both* manage EKS as well as query logs in Elasticsearch/Kibana.
 
-Since this ElasticSearch can only be reached from a network perspective if you are running within this VPC, or have private access to it via a VPN or DirectConnect, then it is not that risky to allow 'open access' to it - especially in a Proof of Concept (POC) environment. As such, we've configured its default access policy so that no login and password as long as you can reach it from a network perspective.
+Since this ElasticSearch can only be reached if you are coming in via the Bastion/VPC/DirectConnect, then it is not that risky to allow 'open access' to it - especially in a Proof of Concept (POC) environment. As such, we've configured its default access policy so that no login and password and are controlling access to it form a network perspective rahter than with authentiation/authorization by default.
 
 ### Connect to Kibana and do initial setup
 
