@@ -1207,6 +1207,10 @@ class EKSClusterStack(core.Stack):
                 self, "ClusterAdminRoleInstanceProfile",
                 roles=[cluster_admin_role.role_name] 
             )
+
+            # Another way into our Bastion is via Systems Manager Session Manager
+            if (create_new_cluster_admin_role is True):
+                cluster_admin_role..add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
             
             # Create code-server bastion
             # Get Latest Amazon Linux AMI
@@ -1257,7 +1261,7 @@ class EKSClusterStack(core.Stack):
             code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
             code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
             code_server_instance.user_data.add_commands("echo \"/root/.local/bin/code-server &\" >> /etc/rc.d/rc.local")
-            code_server_instance.user_data.add_commands("chmod +x /etc/rc.d/rc.local")
+            code_server_instance.user_data.add_commands("chmod a+x /etc/rc.d/rc.local")
             code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
             code_server_instance.user_data.add_commands("chmod +x ./kubectl")
             code_server_instance.user_data.add_commands("mv ./kubectl /usr/bin")

@@ -83,6 +83,19 @@ Run `sudo ./ubuntu-prepreqs.sh`
 
 If you set `deploy_bastion` to `True` in `eks_cluster.py` then the template will deploy an EC2 instance running [Code Server](https://github.com/cdr/code-server) which is Visual Studio Code but running in your browser.
 
+So there are two ways to reach your Bastion and, through it, your EKS cluster:
+
+### Via Systems Manager Session Manager
+
+1. Go to the Systems Manager Server in the AWS Console
+1. Go to Managed Instances on the left hand navigation pane
+1. Select the instance with the name `EKSClusterStack/CodeServerInstance`
+1. Under the Instance Actions menu on the upper right choose Start Session
+1. You need to run `sudo bash` to get to root's profile where we've set up kubectl
+1. Run `kubectl get nodes` to see that all the tools are there and set up for you.
+
+### Via the code-server (VSCode in a browser) server on the Bastion
+
 The stack will have an Output with the address to the Bastion and the password for the web interface defaults to the Instance ID of the Bastion Instance (which you can get from the EC2 Console).
 
 **_NOTE:_** Since this defaults to HTTP rather than HTTPS to accomodate accounts without a public Route 53 Zone and associated certificates that means that modern browsers won't allow you to paste with Ctrl-V. You can, however, paste with shift-insert (insert = fn + return on a Mac so shift-fn-return on a Mac to paste).
