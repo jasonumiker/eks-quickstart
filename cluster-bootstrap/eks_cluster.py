@@ -1268,6 +1268,10 @@ class EKSClusterStack(core.Stack):
             code_server_instance.user_data.add_commands("curl https://intoli.com/install-google-chrome.sh | bash")
             code_server_instance.user_data.add_commands("~/.local/bin/code-server --install-extension auchenberg.vscode-browser-preview")
             code_server_instance.user_data.add_commands("aws eks update-kubeconfig --name " + eks_cluster.cluster_name + " --region " + self.region)
+            code_server_instance.user_data.add_commands("curl -o fluxctl https://github.com/fluxcd/flux/releases/download/1.22.1/fluxctl_linux_amd64")
+            code_server_instance.user_data.add_commands("chmod +x ./fluxctl")
+            code_server_instance.user_data.add_commands("mv ./fluxctl /usr/bin")
+
         
             # Output the Bastion adddress
             core.CfnOutput(
