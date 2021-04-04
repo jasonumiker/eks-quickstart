@@ -7,6 +7,9 @@ This draws from the official [Gatekeeper Library](https://github.com/open-policy
 ## How to deploy?
 This was intended to either be deployed by Flux against the `gatekeeper-policies` folder or via a `kubectl apply --recursive -f gatekeeper-policies`.
 
+## How to test it works?
+There is an example that will be blocked by each policy check in the `gatekeeper-tests` folder once the policies and constraints have been installed.
+
 ## What policies are we enforcing by default in our Quickstart?
 
 We started by emulating the example [Restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) PSP with Gatekeeper as our default and then added a few more thing that were not covered by PSPs but that we can with Gatekeeper. We excluded the `kube-system` namespace as many of our cluster's infrastrucutre add-ons we're deploying there require exceptions to these restrictions.
