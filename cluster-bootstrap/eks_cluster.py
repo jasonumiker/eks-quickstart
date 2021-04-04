@@ -1341,7 +1341,7 @@ class EKSClusterStack(core.Stack):
             # For more info see https://github.com/jasonumiker/eks-quickstart/tree/main/gatekeeper-policies and 
             flux_gatekeeper_chart = eks_cluster.add_helm_chart(
                 "flux-gatekeeper",
-                chart="fluxcd",
+                chart="flux",
                 version="1.8.0",
                 release="flux-gatekeeper",
                 repository="https://charts.fluxcd.io",
