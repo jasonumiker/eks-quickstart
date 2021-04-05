@@ -77,6 +77,9 @@ deploy_aws_efs_csi = True
 # Deploy OPA Gatekeeper?
 deploy_opa_gatekeeper = True
 
+# Deploy example Gatekeeper policies?
+deploy_gatekeeper_policies = True
+
 # Deploy Cluster Autoscaler?
 deploy_cluster_autoscaler = True
 
@@ -1137,7 +1140,7 @@ class EKSClusterStack(core.Stack):
                         "k8s-app":"ssm-installer"
                     },
                     "name":"ssm-installer",
-                    "namespace":"default"
+                    "namespace":"kube-system"
                 },
                 "spec":{
                     "selector":{
@@ -1204,6 +1207,10 @@ class EKSClusterStack(core.Stack):
                 self, "ClusterAdminRoleInstanceProfile",
                 roles=[cluster_admin_role.role_name] 
             )
+
+            # Another way into our Bastion is via Systems Manager Session Manager
+            if (create_new_cluster_admin_role is True):
+                cluster_admin_role..add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
             
             # Create code-server bastion
             # Get Latest Amazon Linux AMI
@@ -1254,13 +1261,17 @@ class EKSClusterStack(core.Stack):
             code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
             code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
             code_server_instance.user_data.add_commands("echo \"/root/.local/bin/code-server &\" >> /etc/rc.d/rc.local")
-            code_server_instance.user_data.add_commands("chmod +x /etc/rc.d/rc.local")
+            code_server_instance.user_data.add_commands("chmod a+x /etc/rc.d/rc.local")
             code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
             code_server_instance.user_data.add_commands("chmod +x ./kubectl")
             code_server_instance.user_data.add_commands("mv ./kubectl /usr/bin")
             code_server_instance.user_data.add_commands("curl https://intoli.com/install-google-chrome.sh | bash")
             code_server_instance.user_data.add_commands("~/.local/bin/code-server --install-extension auchenberg.vscode-browser-preview")
             code_server_instance.user_data.add_commands("aws eks update-kubeconfig --name " + eks_cluster.cluster_name + " --region " + self.region)
+            code_server_instance.user_data.add_commands("curl -o fluxctl https://github.com/fluxcd/flux/releases/download/1.22.1/fluxctl_linux_amd64")
+            code_server_instance.user_data.add_commands("chmod +x ./fluxctl")
+            code_server_instance.user_data.add_commands("mv ./fluxctl /usr/bin")
+
         
             # Output the Bastion adddress
             core.CfnOutput(
@@ -1333,6 +1344,24 @@ class EKSClusterStack(core.Stack):
             eks_name=eks_cluster.cluster_name,
             eks_arn=eks_cluster.cluster_arn
         )
+
+        if (deploy_gatekeeper_policies is True):
+            # For more info see https://github.com/jasonumiker/eks-quickstart/tree/main/gatekeeper-policies and 
+            flux_gatekeeper_chart = eks_cluster.add_helm_chart(
+                "flux-gatekeeper",
+                chart="flux",
+                version="1.8.0",
+                release="flux-gatekeeper",
+                repository="https://charts.fluxcd.io",
+                namespace="kube-system",
+                values={
+                    "git": {
+                        "url": "ssh://git@github.com/jasonumiker/eks-quickstart",
+                        "branch": "main",
+                        "path": "gatekeeper-policies"
+                    }
+                }
+            )
 
 app = core.App()
 # Note that if we didn't pass through the ACCOUNT and REGION from these environment variables that
