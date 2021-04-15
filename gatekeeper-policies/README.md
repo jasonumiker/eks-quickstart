@@ -1,78 +1,96 @@
 # Example Gatekeeper policies and constraints
 
-We're going to deploy policies as well as contraints to implement more sensible security defaults for our cluster via OPA Gatekeeper.
-
-This draws from the official [Gatekeeper Library](https://github.com/open-policy-agent/gatekeeper-library) as well as Kubernetes' [Pod Security Policies](https://kubernetes.io/docs/concepts/policy/pod-security-policy/).
+This is an exmaple set of Gatekeeper Policies that draws from the official [Gatekeeper Library](https://github.com/open-policy-agent/gatekeeper-library) as well as the fields which Kubernetes saw fit to include in its original [Pod Security Policies](https://kubernetes.io/docs/concepts/policy/pod-security-policy/).
 
 ## How to deploy?
-This was intended to either be deployed by Flux against the `gatekeeper-policies` folder or via a `kubectl apply --recursive -f gatekeeper-policies`.
+This can be deployed to a machine that already has Gatekeeper installed via a `kubectl apply --recursive -f gatekeeper-policies` or via GitOps tools, such as Flux or ArgoCD, configured to deploy all the YAML manifests in that folder.
+
+If you are going to do this with GitOps it is suggested that you fork these templates and constraints and do it from your own git repo(s).
 
 ## How to test it works?
-There is an example that will be blocked by each policy check in the `gatekeeper-tests` folder once the policies and constraints have been installed.
+There is an example that will be blocked by each policy in the `gatekeeper-tests` folder. These policies are derivied from the `allowed.yaml` template, which passes all of the policies, changed to violate just the policy in question. 
 
 ## What policies are we enforcing by default in our Quickstart?
 
-I started by emulating the example [Restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) PSP with Gatekeeper as our default and then added a few more thing that were not covered by PSPs but that we can with Gatekeeper. We excluded the `kube-system` namespace as many of our cluster's infrastrucutre add-ons we're deploying there require exceptions to these restrictions.
+We started by recreating the example [Restricted legacy PSP template](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) but via Gatekeeper as our default - and then added a few more important things that were not possible with PSPs but are with Gatekeeper. 
 
-I then also had a look at OpenShift's [default restricted Security Context Constraints](https://docs.openshift.com/container-platform/4.7/authentication/managing-security-context-constraints.html#security-context-constraints-about_configuring-internal-oauth) which itself seems to mostly mirror the Kubernetes default restricted PSP example linked above. So, this appears to be a comparable level of constraints to that minus their default of an SELinux configured on the Nodes and the associated requirement to for a Pod to use pre-allocated MCS labels.
+**NOTE:** We excluded the `kube-system` namespace in all of the constraints as many infrastrucutre add-ons have legitimate need for, and thus require exceptions these limitations of, elevated privileges. If you deploy those things to the kube-system namespace they will not be blocked by these example policies. This is also an example of how it is possible with Gatekeeper constraints to exclude additional namespaces, or other Kubernetes labels, as appropriate.
 
-**NOTE:** that this is an example and there may be valid reasons why particular workloads need exceptions to these rules - particularly if they are infrastrucutre or security add-ons to the cluster. It is possible with Gatekeeper constraints to exclude additional namespaces or, really, any label selector from these rules as appropriate.
+### Policies derived from PSPs
 
-You are welcome to edit the constraints as required in your fork of this repo - including adding any additional ones you may need as well.
+| Descrption | Legacy PSP Field | Constraint and Constraint Template Files |
+| --- | --- | --- |
+| Block running privileged containers | `privileged` | psp_privileged.yaml |
+| Block the ability for the Pods to request any Linux capabilities (e.g. NET_ADMIN | `defaultAddCapabilities`, `requiredDropCapabilities`, `allowedCapabilities` | psp_capabilities.yaml |
+| Block the ability for Pods to run as the root user | `runAsUser`, `runAsGroup`, `supplementalGroups`, `fsgroup` | psp_users.yaml |
+| Block the ability for Pods to use the host's namespace(s) | `hostPID`, `hostIPC` | psp_host_namespaces.yaml |
+| Block the ability to use the host's network | `hostNetwork`,`hostPort` | psp_host_network.yaml |
+| Block the ability for a Pod to mount certain types of volumes (e.g. host volumes) | `volumes` | psp_volumes.yaml |
+||||
 
 ### Block running privileged containers
 
 Privileged mode comes from Docker where it "enables access to all devices on the host as well as set some configuration in AppArmor or SELinux to allow the container nearly all the same access to the host as processes running outside containers on the host." (https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities).
 
-One of the main reasons why people generally want privileged mode is that it allows things running within a container on the host to call the local container runtime/socket and launch more containers. This is an anti-pattern with Kubernetes - which should be launching all the Pods/containers on all of its hosts.
+One of the main reasons why people generally want privileged mode is that it allows things running within a container on the host to call the local container runtime/socket and launch more containers. This is an anti-pattern with Kubernetes - which should be launching all the Pods/containers on all of its hosts. This means that if you need one Pod to launch other containers/Pods it should do so via the Kubernetes API.
 
-There is a more granular way to allow access to specific privileges/capabilities using the capabilities policy. We block both privleged mode as well as all the capabilities by default excluding `kube-system`.
+There is a more granular way to allow access to specific privileges/capabilities using the capabilities policy. We block both privleged mode as well as all the capabilities by default in that seperate policy as well.
 
-### Block the ability for the Pods to request any Linux capabilities (e.g NET_ADMIN)
+### Block the ability for the Pods to request any Linux capabilities
 
 In addition to privleged mode which exposes a number of capabilities at once there is also a way to granularly controled which capabilities.
 
 You can get a list of those capabilities [here](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities).
 
-We block access to all of the capabilities excluding `kube-system` by  default.
+We are requiring a PodSpec to explicitly drop all capabilities in this policy.
 
 ### Block the ability for Pods to run as the root user
 
-By default if the creator of the image doesn't specify a USER in the Dockerfile and/or you don't specify one at runtime then the container will run as `root` (https://docs.docker.com/engine/reference/run/#user).  It does this within its own namespace and the constraints of the container environment and the Gatekeeper policies - but it is still a bad idea for it to run as root unnecessarily. Running it as a non-root user makes it just all that much harder for somebody to escalate to root on the host should there be a bug or vulnerability in the system.
+By default, if the creator of the image doesn't specify a USER in the Dockerfile and/or you don't specify one at runtime then the container will run as `root` (https://docs.docker.com/engine/reference/run/#user).  It does this within its own namespace and the constraints of the container environment and the Gatekeeper policies - but it is still a bad idea for it to run as root unnecessarily. Running it as a non-root user makes it just all that much harder for somebody to escalate to root on the host should there be a bug or vulnerability in the system.
 
-We do not allow the user ID (UID) or group ID (GID) of 0 - which are the root UID and GID in Linux - by default (excluding `kube-system`).
+We do not allow the user ID (UID) or group ID (GID) of 0 - which are the root UID and GID in Linux.
+
+**NOTE:** In order for this policy to work your container image will usually need to create a user and group in the Dockerfile - and the application will need to be able to run in a non-root context. A good example of this is [nginx-unprivileged](https://hub.docker.com/r/nginxinc/nginx-unprivileged) which, unlike the standard [nginx](https://hub.docker.com/_/nginx), runs on port 8080 rather than 80 and so does not require root access. Also note how nginx-unprivileged's Dockerfile has a useradd and groupadd. In order to pass this policy you'll have to include *that* UID and GID in the PodSpec.
 
 ### Block the ability for Pods to use the host's namespace(s)
 
-One of the key security features of Kubernetes is puts each Pod into its own seperate linux [namespace](https://en.wikipedia.org/wiki/Linux_namespaces). This means that it can't see the processes, volume mounts or network interfaces etc. of either the other Pods or the host. 
+One of the key security features of Kubernetes is that it puts each Pod into its own seperate linux [namespace](https://en.wikipedia.org/wiki/Linux_namespaces). This means that it can't see the processes, volume mounts or network interfaces etc. of either the other Pods or the host. 
 
 Is is possible, though, to ask in the PodSpec to be put into the host's namespace and therefore to see everything.
 
-We are blocking the ability to do that by default excluding `kube-system`.
+This blocks the ability to do that.
 
 ### Block the ability to use the host's network
 
-By default with EKS each Pod gets its own VPC IP and that is the network interface that it communicates with the network through.
+By default, EKS via the AWS CNI gives Pod gets its own VPC IP - and that is how it communicates with the network.
 
-It is possible to ask in the PodSpec to be exposed through the host's network interface instead. 
+It is possible, though, to ask in the PodSpec to be exposed through the host's network interface instead or as well.
 
-We are blocking the ability to do that by default excluding `kube-system`.
+We are blocking the ability to do that.
 
 ### Block the ability for a Pod to mount certain types of volumes (e.g. host volumes)
 
 A Pod can request to mount **any** path on the host/Node/Instance that it is running on (e.g. /etc, /proc, etc.).
 
-We're blocking the abilty to do that by default excluding those things running in `kube-system`.
+We're blocking the abilty to do that.
 
-### Require any Pods to declare CPU & memory limits
+### Beyond Pod Security Policies
+
+| Descrption | PodSpec Equivilent Field | Constraint and Constraint Template Files |
+| --- | --- | --- |
+| Require any Pods to declare CPU & memory limits | `resources.limits`, `resources.requests` | container_resource_ratios.yaml |
+| Require any Pods to declare readiness and liveness probes/healthchcecks | `readinessProbe`,`livenessProbe` | probes.yaml |
+| Blocking the use of the `latest` image tag | `image` | disallowed_tags.yaml |
+
+#### Require any Pods to declare CPU & memory limits
 
 Kubernetes has the concepts of `requests` and `limits` when it comes to CPU & Memory. With requests it is telling Kubernetes how much CPU and Memory a Pod is *guaranteed* to get - its minimum. It can use more than that though. While limits, on the other hand, see Kubernetes enforce at that threshold and, in the case of memory, will terminate the container(s) if they exceed the limit.
 
-By default we're running a tight ship and are not only requiring that each of the containers in our Pods have **BOTH** a CPU & Memory request & limit - and that they are the same thing. And, we're excluding `kube-system` from this though.
+By default, we're ensuring that we run running a tight ship by not only requiring that each of the containers in our Pods have **BOTH** a CPU & Memory request & limit - and that they are the same thing.
 
-This is the ideal configuration if you are running a multi-tenant cluster to ensure that there are not any 'noisy neighbor' issues where people who don't specify limits end up using the entire Node. It forces each service to think about how much CPU and Memory they actually need and declare it in their Spec templates when they deploy to the cluster.
+This is the ideal configuration if you are running a multi-tenant cluster to ensure that there are not any 'noisy neighbor' issues where people who don't specify limits burst into overprovisioning on the Node where it was scheudled. This forces each service to think about how much CPU and Memory they actually need and declare it in their Spec templates when they deploy to the cluster - and be held to that.
 
-### Require any Pods to declare readiness and liveness probes/healthchcecks
+#### Require any Pods to declare readiness and liveness probes/healthchcecks
 
 Kubernetes also has the concept of probes which are often also referred to as health checks.
 
@@ -80,15 +98,13 @@ The readiness probe controls whether the service should be sent traffic
 
 The liveness probe controls whether the pod should be healed through replacement
 
-We're requiring that you specify both probes in your PodSpec - excluding in `kube-system`.
+We're requiring that you specify both probes in your PodSpec.
 
-### Blocking the use of the `latest` tag
+#### Blocking the use of the `latest` tag
 
-Almost by definition the `latest` tag will change as new versions are released - often before you've tested and deployed the new version explicity to your cluster. This can lead to things like a Pod is healed or scaled and that leads to the new Pods running the new version alongside the old version without you knowing.
+Almost by definition the `latest` tag will change as new versions are released - often before you've tested and deployed the new version explicity to your cluster. This can lead to things like a Pod is healed or scaled and that leads to the new Pods running the new version alongside the old version without you knowing or intending to have released the new version.
 
-It is best practice to always specify a specific version/tag when deploying to your clusters so any upgrades/changes are declared and intentional.
-
-Excluding `kube-system` by default.
+It is best practice to always specify a specific version/tag when deploying to your clusters so any upgrades/changes are declared and intentional. A good candidate for this is the git commit ID.
 
 ## What is an example PodSpec that passes with all the default policies?
 
