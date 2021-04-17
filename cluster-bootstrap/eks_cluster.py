@@ -80,6 +80,15 @@ deploy_opa_gatekeeper = True
 # Deploy example Gatekeeper policies?
 deploy_gatekeeper_policies = True
 
+# Gateekeper policies git repo
+gatekeeper_policies_git_url = "ssh://git@github.com/jasonumiker/eks-quickstart"
+
+# Gatekeeper policies git branch
+gatekeeper_policies_git_branch = "main"
+
+# Gatekeeper policies git path
+gatekeeper_policies_git_path = "gatekeeper-policies"
+
 # Deploy Cluster Autoscaler?
 deploy_cluster_autoscaler = True
 
@@ -1356,9 +1365,9 @@ class EKSClusterStack(core.Stack):
                 namespace="kube-system",
                 values={
                     "git": {
-                        "url": "ssh://git@github.com/jasonumiker/eks-quickstart",
-                        "branch": "main",
-                        "path": "gatekeeper-policies"
+                        "url": gatekeeper_policies_git_url,
+                        "branch": gatekeeper_policies_git_branch,
+                        "path": gatekeeper_policies_git_path
                     }
                 }
             )
