@@ -174,7 +174,8 @@ class EKSClusterStack(core.Stack):
             # Make our cluster's control plane accessible only within our private VPC
             # This means that we'll have to ssh to a jumpbox/bastion or set up a VPN to manage it
             endpoint_access=eks.EndpointAccess.PRIVATE,
-            version=eks.KubernetesVersion.V1_19
+            version=eks.KubernetesVersion.V1_19,
+            default_capacity=0
         )
 
         # Add a Managed Node Group
