@@ -24,12 +24,12 @@ from ekslogs_custom_resource import EKSLogsObjectResource
 deploy_bastion = True
 
 # Deploy Client VPN?
-deploy_client_vpn = False
+deploy_client_vpn = True
 
 # If VPN = True then create and upload your client and server certs as per putting the ARNs below
 # https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
-client_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
-server_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
+client_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/6b85eefd-56b3-4461-8dda-19613170ba2d"
+server_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/9b30b41a-89a1-416b-b2d2-bc76c26e9f15"
 
 # CIDR Block for VPN Clients (has to be at least a /22)
 vpn_client_cidr_block="10.1.0.0/22"
@@ -51,10 +51,10 @@ vpc_cidr_mask_private=24
 existing_vpc_name="VPC"
 
 # Create a new role as the inital admin for the cluster?
-create_new_cluster_admin_role = True
+create_new_cluster_admin_role = False
 
 # If create_new_cluster_admin_role is False then provide the ARN of the existing role to use
-existing_role_arn="arn:aws:iam::123456789123:role/RoleName"
+existing_role_arn="arn:aws:iam::505070718513:role/IsenAdminRole"
 
 # Deploy the AWS Load Balancer Controller?
 deploy_aws_lb_controller = True
@@ -84,7 +84,7 @@ deploy_gatekeeper_policies = True
 gatekeeper_policies_git_url = "ssh://git@github.com/jasonumiker/eks-quickstart"
 
 # Gatekeeper policies git branch
-gatekeeper_policies_git_branch = "main"
+gatekeeper_policies_git_branch = "production"
 
 # Gatekeeper policies git path
 gatekeeper_policies_git_path = "gatekeeper-policies"
