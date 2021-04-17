@@ -29,7 +29,6 @@ eks_node_quantity = 3
 eks_node_disk_size = 20
 
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
-# The preferred option is to use a Client VPN instead so this defaults to False
 deploy_bastion = True
 
 # Deploy Client VPN?
@@ -640,6 +639,7 @@ class EKSClusterStack(core.Stack):
                 version=es.ElasticsearchVersion.V7_9,
                 vpc=eks_vpc,
                 vpc_subnets=[ec2.SubnetSelection(subnets=[eks_vpc.private_subnets[0]])],
+                security_groups=[eks_cluster.cluster_security_group],
                 capacity=es_capacity,
                 ebs=es_ebs,
                 access_policies=[iam.PolicyStatement.from_json(es_access_policy_statement_json_1)]
