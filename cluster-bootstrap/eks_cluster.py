@@ -640,6 +640,7 @@ class EKSClusterStack(core.Stack):
                 version=es.ElasticsearchVersion.V7_9,
                 vpc=eks_vpc,
                 vpc_subnets=[ec2.SubnetSelection(subnets=[eks_vpc.private_subnets[0]])],
+                security_groups=[eks_cluster.cluster_security_group],
                 capacity=es_capacity,
                 ebs=es_ebs,
                 access_policies=[iam.PolicyStatement.from_json(es_access_policy_statement_json_1)]
