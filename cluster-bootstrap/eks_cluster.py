@@ -19,6 +19,15 @@ import os
 
 from ekslogs_custom_resource import EKSLogsObjectResource
 
+# EKS Node Instance Type
+eks_node_type = "m5.large"
+
+# EKS Node Instance Quantity
+eks_node_quantity = 3
+
+# EKS Node Boot Volume Size (in GB)
+eks_node_disk_size = 20
+
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
 # The preferred option is to use a Client VPN instead so this defaults to False
 deploy_bastion = True
@@ -162,16 +171,24 @@ class EKSClusterStack(core.Stack):
             self, "cluster",
             vpc=eks_vpc,
             masters_role=cluster_admin_role,
-            # Use a Managed Node Group for our initial capacity
-            default_capacity_type=eks.DefaultCapacityType.NODEGROUP,
-            default_capacity_instance=ec2.InstanceType("m5.large"),
-            default_capacity=3,
             # Make our cluster's control plane accessible only within our private VPC
             # This means that we'll have to ssh to a jumpbox/bastion or set up a VPN to manage it
             endpoint_access=eks.EndpointAccess.PRIVATE,
             version=eks.KubernetesVersion.V1_19
         )
-        eks_cluster.default_nodegroup.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
+
+        # Add a Managed Node Group
+        eks_node_group = eks_cluster.add_nodegroup_capacity(
+            "cluster-default-ng",
+            desired_size=eks_node_quantity,
+            disk_size=eks_node_disk_size,
+            # The default in CDK is to force upgrades through even if they violate - it is safer to not do that
+            force_update=False,
+            instance_types=[ec2.InstanceType(eks_node_type)],
+            # TODO: Pin the version of the AMI here to facilitate GitOps upgrades
+            #release_version=
+        )
+        eks_node_group.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
 
         # AWS Load Balancer Controller
         if (deploy_aws_lb_controller is True):
