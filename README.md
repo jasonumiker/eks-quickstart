@@ -77,7 +77,7 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. (Only required the first time you use the CDK in this account) Run `cdk bootstrap` to create the S3 bucket where it puts the CDK puts its artifacts
 1. (Only required the first time ES in VPC mode is used in this account) Run `aws iam create-service-linked-role --aws-service-name es.amazonaws.com`
 1. Run `cdk deploy --require-approval never`
-1. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-0-1-6-aws-for-fluent-bit --namespace=kube-system` and add the following to the bottom `Replace_Dots On`
+1. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-aws-for-fluent-bit --namespace=kube-system` and add the following to the bottom `Replace_Dots On`
 
 ### Finish setup of Flux for GitOps deployment of gatekeeper-policies
 
