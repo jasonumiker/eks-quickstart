@@ -80,6 +80,15 @@ deploy_opa_gatekeeper = True
 # Deploy example Gatekeeper policies?
 deploy_gatekeeper_policies = True
 
+# Gateekeper policies git repo
+gatekeeper_policies_git_url = "ssh://git@github.com/jasonumiker/eks-quickstart"
+
+# Gatekeeper policies git branch
+gatekeeper_policies_git_branch = "main"
+
+# Gatekeeper policies git path
+gatekeeper_policies_git_path = "gatekeeper-policies"
+
 # Deploy Cluster Autoscaler?
 deploy_cluster_autoscaler = True
 
@@ -605,14 +614,14 @@ class EKSClusterStack(core.Stack):
                 },
                 "Resource": "*"
             }
+            # Note that this AWS Elasticsearch domain is optimised for cost rather than availability
+            # and defaults to one node in a single availability zone
             es_domain = es.Domain(
                 self, "ESDomain",
                 removal_policy=core.RemovalPolicy.DESTROY,
                 version=es.ElasticsearchVersion.V7_9,
-                vpc_options=es.VpcOptions(
-                    subnets=[eks_vpc.private_subnets[0]],
-                    security_groups=[eks_cluster.cluster_security_group]
-                ),
+                vpc=eks_vpc,
+                vpc_subnets=[ec2.SubnetSelection(subnets=[eks_vpc.private_subnets[0]])],
                 capacity=es_capacity,
                 ebs=es_ebs,
                 access_policies=[iam.PolicyStatement.from_json(es_access_policy_statement_json_1)]
@@ -1210,7 +1219,7 @@ class EKSClusterStack(core.Stack):
 
             # Another way into our Bastion is via Systems Manager Session Manager
             if (create_new_cluster_admin_role is True):
-                cluster_admin_role..add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
+                cluster_admin_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
             
             # Create code-server bastion
             # Get Latest Amazon Linux AMI
@@ -1356,9 +1365,9 @@ class EKSClusterStack(core.Stack):
                 namespace="kube-system",
                 values={
                     "git": {
-                        "url": "ssh://git@github.com/jasonumiker/eks-quickstart",
-                        "branch": "main",
-                        "path": "gatekeeper-policies"
+                        "url": gatekeeper_policies_git_url,
+                        "branch": gatekeeper_policies_git_branch,
+                        "path": gatekeeper_policies_git_path
                     }
                 }
             )
