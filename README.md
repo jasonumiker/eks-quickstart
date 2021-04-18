@@ -186,7 +186,11 @@ TODO: Walk through deploying some apps that show off some of the cluster add-ons
 
 ## Upgrading your cluster
 
-TODO: Walk through how to do an EKS Cluster to a new Kubernetes version and/or the Managed Node Group to the latest AMI upgrade via CDK
+Since we are explicit both with the EKS Control Plane version as well as the Managed Node Group AMI version upgrading these is simply incrementing these versions, saving `eks_cluster.py` and then running a `cdk deploy`.
+
+As per the [EKS Upgrade Instructions](https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html) you start by upgrading the control plane, then any required add-on versions and then the worker nodes.
+
+
 
 ## Upgrading an add-on
 
