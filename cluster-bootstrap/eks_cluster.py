@@ -28,8 +28,11 @@ eks_node_quantity = 3
 # EKS Node Boot Volume Size (in GB)
 eks_node_disk_size = 20
 
+# EKS Node Version (e.g. 1.19-v20210414 - you find this at the end if the name of the AMI 
+# i.e. amazon-eks-node-1.19-v20210414)
+eks_node_ami_version = "1.19-v20210414"
+
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
-# The preferred option is to use a Client VPN instead so this defaults to False
 deploy_bastion = True
 
 # Deploy Client VPN?
@@ -186,11 +189,10 @@ class EKSClusterStack(core.Stack):
             # The default in CDK is to force upgrades through even if they violate - it is safer to not do that
             force_update=False,
             instance_types=[ec2.InstanceType(eks_node_type)],
-            # TODO: Pin the version of the AMI here to facilitate GitOps upgrades
-            #release_version=
+            release_version=eks_node_ami_version
         )
         eks_node_group.role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
-
+        
         # AWS Load Balancer Controller
         if (deploy_aws_lb_controller is True):
             alb_service_account = eks_cluster.add_service_account(
