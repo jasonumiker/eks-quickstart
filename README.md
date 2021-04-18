@@ -192,7 +192,7 @@ As per the [EKS Upgrade Instructions](https://docs.aws.amazon.com/eks/latest/use
 
 Upgrade the control plane by changing `eks_version` at the top of `eks_cluster.py`. You can see what to put there by looking at the [CDK documentation for KubernetesVersion](https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_eks/KubernetesVersion.html). Then run `cdk deploy` - or let the CodeBuild GitOps provided in `cluster-codebuild` do it for you.
 
-Upgrade the worker nodes by updating `eks_node_ami_version` at the top of `cluster-bootstrap/eks_cluster.py` with the new version. You find the version to type there by searching for the AMI `amazon/amazon-eks-node` and then grabbing it from the end of the image name (start with the version number) as shown here:
+Upgrade the worker nodes by updating `eks_node_ami_version` at the top of `cluster-bootstrap/eks_cluster.py` with the new version. You find the version to type there in the [EKS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/eks-linux-ami-versions.html) as shown here:
 ![](eks_ami_version.PNG)
 
 ## Upgrading an add-on
