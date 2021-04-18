@@ -186,12 +186,23 @@ TODO: Walk through deploying some apps that show off some of the cluster add-ons
 
 ## Upgrading your cluster
 
-TODO: Walk through how to do an EKS Cluster to a new Kubernetes version and/or the Managed Node Group to the latest AMI upgrade via CDK
+Since we are explicit both with the EKS Control Plane version as well as the Managed Node Group AMI version upgrading these is simply incrementing these versions, saving `cluster-bootstrap/eks_cluster.py` and then running a `cdk deploy`.
+
+As per the [EKS Upgrade Instructions](https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html) you start by upgrading the control plane, then any required add-on versions and then the worker nodes.
+
+Upgrade the control plane by changing `eks_version` at the top of `eks_cluster.py`. You can see what to put there by looking at the [CDK documentation for KubernetesVersion](https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_eks/KubernetesVersion.html). Then run `cdk deploy` - or let the CodeBuild GitOps provided in `cluster-codebuild` do it for you.
+
+Upgrade the worker nodes by updating `eks_node_ami_version` at the top of `cluster-bootstrap/eks_cluster.py` with the new version. You find the version to type there by searching for the AMI `amazon/amazon-eks-node` and then grabbing it from the end of the image name (start with the version number) as shown here:
+![](eks_ami_version.PNG)
 
 ## Upgrading an add-on
 
-TODO: Walk through how to upgrade an individual add-on manifest/chart via CDK
+Each of our add-ons are deployed via Helm Charts and are explicit about the chart version being deployed. In the comment above each chart version we link to the GitHub repo for that chart where you can see what the current chart version is and can see what changes may have been rolled in since the one cited in the template.
+
+To upgrade the chart version update the chart version to the upstream version you see there, save it and then do a `cdk deploy`.
+
+**NOTE:** I was thinking about parametising this to the top of `cluster-bootstrap/eks_cluster.py` but it is possible as the Chart versions change that the values you have to specify might also change. As such I have not done so as a reminder that this change might require a bit of testing and research rather than just popping a new version number in and expecting it'll work
 
 ## Outstanding Issues
 
-* Investigate replacing the current instance ID password for the Bastion with something more secure such as generating a longer string and storing it in Secrets Manager
+* Investigate replacing the current instance ID password for the VS Code on the Bastion with something more secure such as generating a longer string and storing it in Secrets Manager - or drop it alltogether in lieu of just the Client VPN and/or Systems Manager Session Manager to the Bastion.

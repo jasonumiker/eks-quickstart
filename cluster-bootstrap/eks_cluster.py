@@ -19,6 +19,11 @@ import os
 
 from ekslogs_custom_resource import EKSLogsObjectResource
 
+# EKS Control Plane version (this is part of the CDK EKS class e.g. eks.KubernetesVersion.V1_19)
+# It is an object not a string and VS Code etc. will autocomplete it for you when you type the dot
+# See https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-eks.KubernetesVersion.html
+eks_version = eks.KubernetesVersion.V1_19
+
 # EKS Node Instance Type
 eks_node_type = "m5.large"
 
@@ -177,7 +182,7 @@ class EKSClusterStack(core.Stack):
             # Make our cluster's control plane accessible only within our private VPC
             # This means that we'll have to ssh to a jumpbox/bastion or set up a VPN to manage it
             endpoint_access=eks.EndpointAccess.PRIVATE,
-            version=eks.KubernetesVersion.V1_19,
+            version=eks_version,
             default_capacity=0
         )
 
