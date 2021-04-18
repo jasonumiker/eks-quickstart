@@ -21,7 +21,7 @@ from ekslogs_custom_resource import EKSLogsObjectResource
 
 # EKS Control Plane version (this is part of the CDK EKS class e.g. eks.KubernetesVersion.V1_19)
 # It is an object not a string and VS Code etc. will autocomplete it for you when you type the dot
-# See https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-eks.KubernetesVersion.html
+# See https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_eks/KubernetesVersion.html
 eks_version = eks.KubernetesVersion.V1_19
 
 # EKS Node Instance Type
@@ -35,7 +35,7 @@ eks_node_disk_size = 20
 
 # EKS Node Version (e.g. 1.19-v20210414 - you find this at the end if the name of the AMI 
 # i.e. amazon-eks-node-1.19-v20210414)
-eks_node_ami_version = "1.19-v20210414"
+eks_node_ami_version = "1.19.6-20210414"
 
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
 deploy_bastion = True
