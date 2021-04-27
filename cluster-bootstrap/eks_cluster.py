@@ -33,12 +33,15 @@ eks_node_quantity = 3
 # EKS Node Boot Volume Size (in GB)
 eks_node_disk_size = 20
 
-# EKS Node Version (e.g. 1.19-v20210414 - you find this at the end if the name of the AMI 
-# i.e. amazon-eks-node-1.19-v20210414)
+# EKS Node Version (e.g. 1.19.6-20210414)
+# You can look this up here https://docs.aws.amazon.com/eks/latest/userguide/eks-linux-ami-versions.html
 eks_node_ami_version = "1.19.6-20210414"
 
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
 deploy_bastion = True
+
+# Install code-server (VS Code via your browser) on the Bastion?
+deploy_code_server_on_bastion = True
 
 # Deploy Client VPN?
 deploy_client_vpn = True
@@ -678,7 +681,7 @@ class EKSClusterStack(core.Stack):
             fluentbit_chart = eks_cluster.add_helm_chart(
                 "fluentbit",
                 chart="aws-for-fluent-bit",
-                version="0.1.6",
+                version="0.1.7",
                 release="fluentbit",
                 repository="https://aws.github.io/eks-charts",
                 namespace="kube-system",
@@ -1262,10 +1265,6 @@ class EKSClusterStack(core.Stack):
                 vpc=eks_vpc,
                 allow_all_outbound=True
             )
-            bastion_security_group.add_ingress_rule(
-                ec2.Peer.any_ipv4(),
-                ec2.Port.tcp(8080)
-            )
 
             # Add a rule to allow our new SG to talk to the EKS control plane
             eks_cluster.cluster_security_group.add_ingress_rule(
@@ -1285,35 +1284,42 @@ class EKSClusterStack(core.Stack):
                 block_devices=[ec2.BlockDevice(device_name="/dev/xvda", volume=ec2.BlockDeviceVolume.ebs(20))]
             )
 
-            # Add UserData
-            code_server_instance.user_data.add_commands("mkdir -p ~/.local/lib ~/.local/bin ~/.config/code-server")
-            code_server_instance.user_data.add_commands("curl -fL https://github.com/cdr/code-server/releases/download/v3.9.1/code-server-3.9.1-linux-amd64.tar.gz | tar -C ~/.local/lib -xz")
-            code_server_instance.user_data.add_commands("mv ~/.local/lib/code-server-3.9.1-linux-amd64 ~/.local/lib/code-server-3.9.1")
-            code_server_instance.user_data.add_commands("ln -s ~/.local/lib/code-server-3.9.1/bin/code-server ~/.local/bin/code-server")
-            code_server_instance.user_data.add_commands("echo \"bind-addr: 0.0.0.0:8080\" > ~/.config/code-server/config.yaml")
-            code_server_instance.user_data.add_commands("echo \"auth: password\" >> ~/.config/code-server/config.yaml")
-            code_server_instance.user_data.add_commands("echo \"password: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)\" >> ~/.config/code-server/config.yaml")
-            code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
-            code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
-            code_server_instance.user_data.add_commands("echo \"/root/.local/bin/code-server &\" >> /etc/rc.d/rc.local")
-            code_server_instance.user_data.add_commands("chmod a+x /etc/rc.d/rc.local")
+            # Set up our kubectl and fluxctl
             code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
             code_server_instance.user_data.add_commands("chmod +x ./kubectl")
             code_server_instance.user_data.add_commands("mv ./kubectl /usr/bin")
-            code_server_instance.user_data.add_commands("curl https://intoli.com/install-google-chrome.sh | bash")
-            code_server_instance.user_data.add_commands("~/.local/bin/code-server --install-extension auchenberg.vscode-browser-preview")
             code_server_instance.user_data.add_commands("aws eks update-kubeconfig --name " + eks_cluster.cluster_name + " --region " + self.region)
             code_server_instance.user_data.add_commands("curl -o fluxctl https://github.com/fluxcd/flux/releases/download/1.22.1/fluxctl_linux_amd64")
             code_server_instance.user_data.add_commands("chmod +x ./fluxctl")
             code_server_instance.user_data.add_commands("mv ./fluxctl /usr/bin")
 
-        
-            # Output the Bastion adddress
-            core.CfnOutput(
-                self, "BastionAddress",
-                value="http://"+code_server_instance.instance_public_ip+":8080",
-                description="Address to reach your Bastion's VS Code Web UI",
-            )
+
+            if (deploy_code_server_on_bastion is True):
+                # Allow the port 8080 through the security group to reach it 
+                bastion_security_group.add_ingress_rule(
+                    ec2.Peer.any_ipv4(),
+                    ec2.Port.tcp(8080)
+                )
+                # Add UserData
+                code_server_instance.user_data.add_commands("mkdir -p ~/.local/lib ~/.local/bin ~/.config/code-server")
+                code_server_instance.user_data.add_commands("curl -fL https://github.com/cdr/code-server/releases/download/v3.9.1/code-server-3.9.1-linux-amd64.tar.gz | tar -C ~/.local/lib -xz")
+                code_server_instance.user_data.add_commands("mv ~/.local/lib/code-server-3.9.1-linux-amd64 ~/.local/lib/code-server-3.9.1")
+                code_server_instance.user_data.add_commands("ln -s ~/.local/lib/code-server-3.9.1/bin/code-server ~/.local/bin/code-server")
+                code_server_instance.user_data.add_commands("echo \"bind-addr: 0.0.0.0:8080\" > ~/.config/code-server/config.yaml")
+                code_server_instance.user_data.add_commands("echo \"auth: password\" >> ~/.config/code-server/config.yaml")
+                code_server_instance.user_data.add_commands("echo \"password: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)\" >> ~/.config/code-server/config.yaml")
+                code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
+                code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
+                code_server_instance.user_data.add_commands("echo \"/root/.local/bin/code-server &\" >> /etc/rc.d/rc.local")
+                code_server_instance.user_data.add_commands("chmod a+x /etc/rc.d/rc.local")
+                code_server_instance.user_data.add_commands("curl https://intoli.com/install-google-chrome.sh | bash")
+                code_server_instance.user_data.add_commands("~/.local/bin/code-server --install-extension auchenberg.vscode-browser-preview")
+                # Output the Bastion adddress
+                core.CfnOutput(
+                    self, "BastionAddress",
+                    value="http://"+code_server_instance.instance_public_ip+":8080",
+                    description="Address to reach your Bastion's VS Code Web UI",
+                )
 
             # Wait to deploy Bastion until cluster is up and we're deploying manifests/charts to it
             # This could be any of the charts/manifests I just picked this one at random
