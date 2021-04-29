@@ -2,6 +2,8 @@
 
 This project is an example of how you can combine the AWS Cloud Development Kit (CDK) and the AWS Elastic Kubernetes Serivce (EKS) to quickly deploy a more complete and "production ready" Kubernetes environment on AWS.
 
+I describe it a bit more in a recent blog post - https://jason-umiker.medium.com/automating-the-provisioning-of-a-production-ready-kubernetes-cluster-with-aws-eks-cdk-b1f0e8a12723
+
 ## What does this QuickStart create for you:
 
 1. An appropriate VPC (/22 CDIR w/1024 IPs by default - though you can edit this in `eks_cluster.py`) with public and private subnets across three availabilty zones.
