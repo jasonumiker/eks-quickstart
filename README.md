@@ -73,14 +73,15 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. Make sure that you have your AWS CLI configured with administrative access to the AWS account in question (e.g. an `aws s3 ls` works)
     1. This can be via setting your access key and secret in your .aws folder via `aws configure` or in your environment variables by copy and pasting from AWS SSO etc.
 1. Run `cd eks-quickstart/cluster-bootstrap`
-1. Run `pip install -r requirements.txt` to install the required Python bits of the CDK
-1. Run `export CDK_DEPLOY_REGION=ap-southeast-2` replacing ap-southeast-2 with your region of choice
-1. Run `export CDK_DEPLOY_ACCOUNT=123456789123` replacing 123456789123 with your AWS account number
-1. (Optional) If you want to make an existing IAM User or Role the cluster admin rather than creating a new one then edit `eks_cluster.py` and comment out the curernt cluster_admin_role and uncomment the one beneath it and fill in the ARN of the User/Role you'd like there.
-1. (Only required the first time you use the CDK in this account) Run `cdk bootstrap` to create the S3 bucket where it puts the CDK puts its artifacts
-1. (Only required the first time ES in VPC mode is used in this account) Run `aws iam create-service-linked-role --aws-service-name es.amazonaws.com`
-1. Run `cdk deploy --require-approval never`
-1. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-aws-for-fluent-bit --namespace=kube-system` and add the following to the bottom `Replace_Dots On`
+2. Run `sudo npm install --upgrade -g aws-cdk` to ensure your CDK is up to date
+3. Run `pip install --upgrade -r requirements.txt` to install the required Python bits of the CDK
+4. Run `export CDK_DEPLOY_REGION=ap-southeast-2` replacing ap-southeast-2 with your region of choice
+5. Run `export CDK_DEPLOY_ACCOUNT=123456789123` replacing 123456789123 with your AWS account number
+6. (Optional) If you want to make an existing IAM User or Role the cluster admin rather than creating a new one then edit `eks_cluster.py` and comment out the curernt cluster_admin_role and uncomment the one beneath it and fill in the ARN of the User/Role you'd like there.
+7. (Only required the first time you use the CDK in this account) Run `cdk bootstrap` to create the S3 bucket where it puts the CDK puts its artifacts
+8. (Only required the first time ES in VPC mode is used in this account) Run `aws iam create-service-linked-role --aws-service-name es.amazonaws.com`
+9. Run `cdk deploy --require-approval never`
+10. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-aws-for-fluent-bit --namespace=kube-system` and add the following to the bottom `Replace_Dots On`
 
 ### Finish setup of Flux for GitOps deployment of gatekeeper-policies
 
