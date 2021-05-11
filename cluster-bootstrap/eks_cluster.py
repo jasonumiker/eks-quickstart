@@ -35,7 +35,7 @@ eks_node_disk_size = 20
 
 # EKS Node Version (e.g. 1.19.6-20210414)
 # You can look this up here https://docs.aws.amazon.com/eks/latest/userguide/eks-linux-ami-versions.html
-eks_node_ami_version = "1.19.6-20210414"
+eks_node_ami_version = "1.19.6-20210504"
 
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
 deploy_bastion = True
