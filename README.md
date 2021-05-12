@@ -2,6 +2,8 @@
 
 This project is an example of how you can combine the AWS Cloud Development Kit (CDK) and the AWS Elastic Kubernetes Serivce (EKS) to quickly deploy a more complete and "production ready" Kubernetes environment on AWS.
 
+I describe it a bit more in a recent blog post - https://jason-umiker.medium.com/automating-the-provisioning-of-a-production-ready-kubernetes-cluster-with-aws-eks-cdk-b1f0e8a12723
+
 ## What does this QuickStart create for you:
 
 1. An appropriate VPC (/22 CDIR w/1024 IPs by default - though you can edit this in `eks_cluster.py`) with public and private subnets across three availabilty zones.
@@ -13,7 +15,7 @@ This project is an example of how you can combine the AWS Cloud Development Kit 
     3. All control plane logging to CloudWatch Logs enabled (defaulting to 1 month's retention within CloudWatch Logs).
 1. The AWS Load Balancer Controller (https://kubernetes-sigs.github.io/aws-load-balancer-controller) to allow you to seamlessly use ALBs for Ingress and NLB for Services.
 1. External DNS (https://github.com/kubernetes-sigs/external-dns) to allow you to automatically create/update Route53 entries to point your 'real' names at your Ingresses and Services.
-1. A new managed Amazon Elasticsearch Domain behind a private PC endpoint as well as an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
+1. A new managed Amazon Elasticsearch Domain behind a private VPC endpoint as well as an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
 1. (Temporarily until the AWS Managed Prometheus/Grafana are available) The kube-prometheus Operator (https://github.com/prometheus-operator/kube-prometheus) which deploys you a Prometheus on your cluster that will collect all your cluster metrics as well as a Grafana to visualise them.
     1. TODO: Add some initial alerts for sensible common items in the cluster via Prometheus/Alertmanager
 1. The AWS EBS CSI Driver (https://github.com/kubernetes-sigs/aws-ebs-csi-driver). Note that new development on EBS functionality has moved out of the Kubernetes mainline to this externalised CSI driver.
@@ -71,14 +73,15 @@ Run `sudo ./ubuntu-prepreqs.sh`
 1. Make sure that you have your AWS CLI configured with administrative access to the AWS account in question (e.g. an `aws s3 ls` works)
     1. This can be via setting your access key and secret in your .aws folder via `aws configure` or in your environment variables by copy and pasting from AWS SSO etc.
 1. Run `cd eks-quickstart/cluster-bootstrap`
-1. Run `pip install -r requirements.txt` to install the required Python bits of the CDK
-1. Run `export CDK_DEPLOY_REGION=ap-southeast-2` replacing ap-southeast-2 with your region of choice
-1. Run `export CDK_DEPLOY_ACCOUNT=123456789123` replacing 123456789123 with your AWS account number
-1. (Optional) If you want to make an existing IAM User or Role the cluster admin rather than creating a new one then edit `eks_cluster.py` and comment out the curernt cluster_admin_role and uncomment the one beneath it and fill in the ARN of the User/Role you'd like there.
-1. (Only required the first time you use the CDK in this account) Run `cdk bootstrap` to create the S3 bucket where it puts the CDK puts its artifacts
-1. (Only required the first time ES in VPC mode is used in this account) Run `aws iam create-service-linked-role --aws-service-name es.amazonaws.com`
-1. Run `cdk deploy --require-approval never`
-1. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-aws-for-fluent-bit --namespace=kube-system` and add the following to the bottom `Replace_Dots On`
+2. Run `sudo npm install --upgrade -g aws-cdk` to ensure your CDK is up to date
+3. Run `pip install --upgrade -r requirements.txt` to install the required Python bits of the CDK
+4. Run `export CDK_DEPLOY_REGION=ap-southeast-2` replacing ap-southeast-2 with your region of choice
+5. Run `export CDK_DEPLOY_ACCOUNT=123456789123` replacing 123456789123 with your AWS account number
+6. (Optional) If you want to make an existing IAM User or Role the cluster admin rather than creating a new one then edit `eks_cluster.py` and comment out the curernt cluster_admin_role and uncomment the one beneath it and fill in the ARN of the User/Role you'd like there.
+7. (Only required the first time you use the CDK in this account) Run `cdk bootstrap` to create the S3 bucket where it puts the CDK puts its artifacts
+8. (Only required the first time ES in VPC mode is used in this account) Run `aws iam create-service-linked-role --aws-service-name es.amazonaws.com`
+9. Run `cdk deploy --require-approval never`
+10. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-aws-for-fluent-bit --namespace=kube-system` and add the following to the bottom `Replace_Dots On`
 
 ### Finish setup of Flux for GitOps deployment of gatekeeper-policies
 
