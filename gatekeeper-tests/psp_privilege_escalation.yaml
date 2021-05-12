@@ -29,7 +29,7 @@ spec:
         capabilities:
           drop:
             - ALL
-        allowPrivilegeEscalation: false
+        allowPrivilegeEscalation: true
       readinessProbe:
           httpGet:
             scheme: HTTP
