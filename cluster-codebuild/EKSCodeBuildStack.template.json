@@ -1,4 +1,12 @@
 {
+  "Parameters": {
+    "GithubUserParameter": {
+      "Type": "String",
+      "Default": "jasonumiker",
+      "Description": "Your GitHub name to use where you have forked the eks-quickstart project "
+    }
+  },
+
   "Resources": {
     "EKSCodeBuildRole5B8B1ABC": {
       "Type": "AWS::IAM::Role",
@@ -40,11 +48,7 @@
         "PolicyDocument": {
           "Statement": [
             {
-              "Action": [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-              ],
+              "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
               "Effect": "Allow",
               "Resource": [
                 {
@@ -158,14 +162,16 @@
           "Type": "LINUX_CONTAINER"
         },
         "ServiceRole": {
-          "Fn::GetAtt": [
-            "EKSCodeBuildRole5B8B1ABC",
-            "Arn"
-          ]
+          "Fn::GetAtt": ["EKSCodeBuildRole5B8B1ABC", "Arn"]
         },
         "Source": {
           "BuildSpec": "cluster-bootstrap/buildspec.yml",
-          "Location": "https://github.com/jasonumiker/eks-quickstart.git",
+          "Location": {
+            "Fn::Sub": [
+              "https://github.com/${GITHUB_USER}/eks-quickstart.git",
+              { "GITHUB_USER": { "Ref": "GithubUserParameter" } }
+            ]
+          },
           "ReportBuildStatus": true,
           "Type": "GITHUB"
         },
