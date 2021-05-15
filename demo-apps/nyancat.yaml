@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-kubernetes
+  name: nyancat
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: hello-kubernetes
+      app: nyancat
   template:
     metadata:
       labels:
-        app: hello-kubernetes
+        app: nyancat
     spec:
       securityContext:
         supplementalGroups:
-          - 1000
-        fsGroup: 1000
+          - 101
+        fsGroup: 101
       containers:
-      - name: hello-kubernetes
-        image: paulbouwer/hello-kubernetes:1.10
+      - name: nyancat
+        image: 505070718513.dkr.ecr.ap-southeast-2.amazonaws.com/nyancat-docker:1.0
         ports:
         - containerPort: 8080
         resources:
@@ -29,8 +29,8 @@ spec:
             memory: "512Mi"
             cpu: "0.5"
         securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
+          runAsUser: 101
+          runAsGroup: 101
           capabilities:
             drop:
               - ALL
@@ -49,29 +49,29 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: hello-kubernetes
+  name: nyancat
 spec:
   type: ClusterIP
   ports:
-  - port: 80
+  - port: 8080
     targetPort: 8080
   selector:
-    app: hello-kubernetes
+    app: nyancat
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: hello-kubernetes
+  name: nyancat
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    external-dns.alpha.kubernetes.io/hostname: hello-kubernetes.jasonumiker.com
+    external-dns.alpha.kubernetes.io/hostname: nyancat.jasonumiker.com
 spec:
   tls:
   - hosts:
-    - hello-kubernetes.jasonumiker.com
+    - nyancat.jasonumiker.com
   rules:
   - http:
       paths:
@@ -79,6 +79,6 @@ spec:
         path: "/*"
         backend:
           service:
-            name: hello-kubernetes
+            name: nyancat
             port:
-              number: 80
+              number: 8080
