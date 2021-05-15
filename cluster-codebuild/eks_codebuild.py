@@ -24,7 +24,7 @@ github_owner = "jasonumiker"
 github_repo="eks-quickstart"
 
 # The GitHub branch to pull from and set up a GitOps webhook against
-github_branch = "main"
+github_branch = "production"
 
 class EKSCodeBuildStack(core.Stack):
 

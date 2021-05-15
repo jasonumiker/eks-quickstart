@@ -178,7 +178,7 @@
                 "Type": "EVENT"
               },
               {
-                "Pattern": "refs/heads/main",
+                "Pattern": "refs/heads/production",
                 "Type": "HEAD_REF"
               },
               {
