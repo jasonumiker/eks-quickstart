@@ -40,14 +40,11 @@ eks_node_ami_version = "1.19.6-20210504"
 # Set this to True in order to deploy a Bastion host to access your new cluster/environment
 deploy_bastion = True
 
-# Install code-server (VS Code via your browser) on the Bastion?
-deploy_code_server_on_bastion = True
-
 # Deploy Client VPN?
-deploy_client_vpn = False
-
-# If VPN = True then create and upload your client and server certs as per putting the ARNs below
+# Before setting this to true you'll need to create and upload your certs as per these instructions
+# And then put the ARNs below in client_certificate_arn and server_certificate_arn
 # https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
+deploy_client_vpn = False
 client_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
 server_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
 
@@ -68,6 +65,8 @@ vpc_cidr_mask_public=26
 vpc_cidr_mask_private=24
 
 # If create_new_vpc is False then enter the name of the existing VPC to use
+# Note that if you use an existing VPC you'll need to tag the subnets as
+# described here https://aws.amazon.com/premiumsupport/knowledge-center/eks-vpc-subnet-discovery/
 existing_vpc_name="VPC"
 
 # Create a new role as the inital admin for the cluster?
@@ -85,6 +84,19 @@ deploy_external_dns = True
 # Deploy managed Elasticsearch and fluent-bit Daemonset?
 deploy_managed_elasticsearch = True
 
+# The capacity in Nodes and Volume Size/Type for the AWS Elasticsearch
+es_capacity = es.CapacityConfig(
+    data_nodes=1,
+    data_node_instance_type="r5.large.elasticsearch",
+    master_nodes=0,
+    master_node_instance_type="r5.large.elasticsearch"
+)
+es_ebs = es.EbsOptions(
+    enabled=True,
+    volume_type=ec2.EbsDeviceVolumeType.GP2,
+    volume_size=10
+)
+
 # Deploy the kube-prometheus operator (on-cluster Prometheus & Grafana)?
 deploy_kube_prometheus_operator = True
 
@@ -101,7 +113,7 @@ deploy_opa_gatekeeper = True
 deploy_gatekeeper_policies = True
 
 # Gateekeper policies git repo
-gatekeeper_policies_git_url = "ssh://git@github.com/jasonumiker/eks-quickstart"
+gatekeeper_policies_git_url = "ssh://git@github.com/aws-quickstart/quickstart-eks-cdk-python"
 
 # Gatekeeper policies git branch
 gatekeeper_policies_git_branch = "main"
@@ -390,6 +402,8 @@ class EKSClusterStack(core.Stack):
             )
 
             # Create the PolicyStatements to attach to the role
+            # NOTE that this will give External DNS access to all Route53 zones
+            # For production you'll likely want to replace 'Resourece *' with specific resources
             externaldns_policy_statement_json_1 = {
             "Effect": "Allow",
                 "Action": [
@@ -419,7 +433,7 @@ class EKSClusterStack(core.Stack):
             externaldns_chart = eks_cluster.add_helm_chart(
                 "external-dns",
                 chart="external-dns",
-                version="4.9.0",
+                version="5.0.0",
                 release="externaldns",
                 repository="https://charts.bitnami.com/bitnami",
                 namespace="kube-system",
@@ -479,7 +493,7 @@ class EKSClusterStack(core.Stack):
             awsebscsi_chart = eks_cluster.add_helm_chart(
                 "aws-ebs-csi-driver",
                 chart="aws-ebs-csi-driver",
-                version="0.9.14",
+                version="1.0.1",
                 release="awsebscsidriver",
                 repository="https://kubernetes-sigs.github.io/aws-ebs-csi-driver",
                 namespace="kube-system",
@@ -552,7 +566,7 @@ class EKSClusterStack(core.Stack):
             awsefscsi_chart = eks_cluster.add_helm_chart(
                 "aws-efs-csi-driver",
                 chart="aws-efs-csi-driver",
-                version="1.1.1",
+                version="1.2.4",
                 release="awsefscsidriver",
                 repository="https://kubernetes-sigs.github.io/aws-efs-csi-driver/",
                 namespace="kube-system",
@@ -597,7 +611,7 @@ class EKSClusterStack(core.Stack):
             clusterautoscaler_chart = eks_cluster.add_helm_chart(
                 "cluster-autoscaler",
                 chart="cluster-autoscaler",
-                version="9.7.0",
+                version="9.9.2",
                 release="clusterautoscaler",
                 repository="https://kubernetes.github.io/autoscaler",
                 namespace="kube-system",
@@ -623,17 +637,6 @@ class EKSClusterStack(core.Stack):
             # NOTE: I changed this to a removal_policy of DESTROY to help cleanup while I was 
             # developing/iterating on the project. If you comment out that line it defaults to keeping 
             # the Domain upon deletion of the CloudFormation stack so you won't lose your log data
-            es_capacity = es.CapacityConfig(
-                data_nodes=1,
-                data_node_instance_type="r5.large.elasticsearch",
-                master_nodes=0,
-                master_node_instance_type="r5.large.elasticsearch"
-            )
-            es_ebs = es.EbsOptions(
-                enabled=True,
-                volume_type=ec2.EbsDeviceVolumeType.GP2,
-                volume_size=10
-            )
             es_access_policy_statement_json_1 = {
                 "Effect": "Allow",
                 "Action": "es:*",
@@ -708,7 +711,7 @@ class EKSClusterStack(core.Stack):
             prometheus_chart = eks_cluster.add_helm_chart(
                 "metrics",
                 chart="kube-prometheus-stack",
-                version="14.0.1",
+                version="15.4.6",
                 release="prometheus",
                 repository="https://prometheus-community.github.io/helm-charts",
                 namespace="kube-system",
@@ -794,7 +797,7 @@ class EKSClusterStack(core.Stack):
             metricsserver_chart = eks_cluster.add_helm_chart(
                 "metrics-server",
                 chart="metrics-server",
-                version="5.8.0",
+                version="5.8.7",
                 release="metricsserver",
                 repository="https://charts.bitnami.com/bitnami",
                 namespace="kube-system",
@@ -809,7 +812,7 @@ class EKSClusterStack(core.Stack):
             gatekeeper_chart = eks_cluster.add_helm_chart(
                 "gatekeeper",
                 chart="gatekeeper",
-                version="3.4.0-beta.0",
+                version="3.4.0",
                 release="gatekeeper",
                 repository="https://open-policy-agent.github.io/gatekeeper/charts",
                 namespace="kube-system"
@@ -1223,8 +1226,7 @@ class EKSClusterStack(core.Stack):
             })
                 
         # If you have a 'True' in the deploy_bastion variable at the top of the file we'll deploy
-        # a basion server that you can connect to VS Code via HTTP on port 8080 on the public IP
-        # The password is the instance ID of the CodeServerInstance (find in the console)
+        # a basion server that you can connect to via Systems Manager Session Manager
         if (deploy_bastion is True):
             # Create an Instance Profile for our Admin Role to assume w/EC2
             cluster_admin_role_instance_profile = iam.CfnInstanceProfile(
@@ -1259,7 +1261,7 @@ class EKSClusterStack(core.Stack):
             )
 
             # Create our EC2 instance running CodeServer
-            code_server_instance = ec2.Instance(
+            bastion_instance = ec2.Instance(
                 self, "CodeServerInstance",
                 instance_type=ec2.InstanceType("t3.large"),
                 machine_image=amzn_linux,
@@ -1271,45 +1273,17 @@ class EKSClusterStack(core.Stack):
             )
 
             # Set up our kubectl and fluxctl
-            code_server_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
-            code_server_instance.user_data.add_commands("chmod +x ./kubectl")
-            code_server_instance.user_data.add_commands("mv ./kubectl /usr/bin")
-            code_server_instance.user_data.add_commands("aws eks update-kubeconfig --name " + eks_cluster.cluster_name + " --region " + self.region)
-            code_server_instance.user_data.add_commands("curl -o fluxctl https://github.com/fluxcd/flux/releases/download/1.22.1/fluxctl_linux_amd64")
-            code_server_instance.user_data.add_commands("chmod +x ./fluxctl")
-            code_server_instance.user_data.add_commands("mv ./fluxctl /usr/bin")
-
-
-            if (deploy_code_server_on_bastion is True):
-                # Allow the port 8080 through the security group to reach it 
-                bastion_security_group.add_ingress_rule(
-                    ec2.Peer.any_ipv4(),
-                    ec2.Port.tcp(8080)
-                )
-                # Add UserData
-                code_server_instance.user_data.add_commands("mkdir -p ~/.local/lib ~/.local/bin ~/.config/code-server")
-                code_server_instance.user_data.add_commands("curl -fL https://github.com/cdr/code-server/releases/download/v3.9.1/code-server-3.9.1-linux-amd64.tar.gz | tar -C ~/.local/lib -xz")
-                code_server_instance.user_data.add_commands("mv ~/.local/lib/code-server-3.9.1-linux-amd64 ~/.local/lib/code-server-3.9.1")
-                code_server_instance.user_data.add_commands("ln -s ~/.local/lib/code-server-3.9.1/bin/code-server ~/.local/bin/code-server")
-                code_server_instance.user_data.add_commands("echo \"bind-addr: 0.0.0.0:8080\" > ~/.config/code-server/config.yaml")
-                code_server_instance.user_data.add_commands("echo \"auth: password\" >> ~/.config/code-server/config.yaml")
-                code_server_instance.user_data.add_commands("echo \"password: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)\" >> ~/.config/code-server/config.yaml")
-                code_server_instance.user_data.add_commands("echo \"cert: false\" >> ~/.config/code-server/config.yaml")
-                code_server_instance.user_data.add_commands("~/.local/bin/code-server &")
-                code_server_instance.user_data.add_commands("echo \"/root/.local/bin/code-server &\" >> /etc/rc.d/rc.local")
-                code_server_instance.user_data.add_commands("chmod a+x /etc/rc.d/rc.local")
-                code_server_instance.user_data.add_commands("curl https://intoli.com/install-google-chrome.sh | bash")
-                code_server_instance.user_data.add_commands("~/.local/bin/code-server --install-extension auchenberg.vscode-browser-preview")
-                # Output the Bastion adddress
-                core.CfnOutput(
-                    self, "BastionAddress",
-                    value="http://"+code_server_instance.instance_public_ip+":8080",
-                    description="Address to reach your Bastion's VS Code Web UI",
-                )
+            bastion_instance.user_data.add_commands("curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl")
+            bastion_instance.user_data.add_commands("chmod +x ./kubectl")
+            bastion_instance.user_data.add_commands("mv ./kubectl /usr/bin")
+            bastion_instance.user_data.add_commands("aws eks update-kubeconfig --name " + eks_cluster.cluster_name + " --region " + self.region)
+            bastion_instance.user_data.add_commands("curl -o fluxctl https://github.com/fluxcd/flux/releases/download/1.22.1/fluxctl_linux_amd64")
+            bastion_instance.user_data.add_commands("chmod +x ./fluxctl")
+            bastion_instance.user_data.add_commands("mv ./fluxctl /usr/bin")
 
             # Wait to deploy Bastion until cluster is up and we're deploying manifests/charts to it
             # This could be any of the charts/manifests I just picked this one at random
-            code_server_instance.node.add_dependency(ssm_agent_manifest)
+            bastion_instance.node.add_dependency(ssm_agent_manifest)
             
         
         if (deploy_client_vpn is True):
@@ -1373,11 +1347,11 @@ class EKSClusterStack(core.Stack):
         )
 
         if (deploy_gatekeeper_policies is True):
-            # For more info see https://github.com/jasonumiker/eks-quickstart/tree/main/gatekeeper-policies and 
+            # For more info see https://github.com/aws-quickstart/quickstart-eks-cdk-python/tree/main/gatekeeper-policies
             flux_gatekeeper_chart = eks_cluster.add_helm_chart(
                 "flux-gatekeeper",
                 chart="flux",
-                version="1.8.0",
+                version="1.9.0",
                 release="flux-gatekeeper",
                 repository="https://charts.fluxcd.io",
                 namespace="kube-system",
