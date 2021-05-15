@@ -44,9 +44,9 @@ deploy_bastion = True
 # Before setting this to true you'll need to create and upload your certs as per these instructions
 # And then put the ARNs below in client_certificate_arn and server_certificate_arn
 # https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual
-deploy_client_vpn = False
-client_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
-server_certificate_arn="arn:aws:acm:ap-southeast-2:123456789123:certificate/XXX"
+deploy_client_vpn = True
+client_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/6b85eefd-56b3-4461-8dda-19613170ba2d"
+server_certificate_arn="arn:aws:acm:ap-southeast-2:505070718513:certificate/9b30b41a-89a1-416b-b2d2-bc76c26e9f15"
 
 # CIDR Block for VPN Clients (has to be at least a /22)
 vpn_client_cidr_block="10.1.0.0/22"
