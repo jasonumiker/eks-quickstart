@@ -45,6 +45,7 @@ class EKSCodeBuildStack(core.Stack):
         git_hub_source = codebuild.Source.git_hub(
             owner=github_owner,
             repo=github_repo,
+            branch_or_ref=github_branch,
             webhook=True,
             webhook_filters=[
                 codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH).and_branch_is(github_branch).and_file_path_is("cluster-bootstrap/*")
