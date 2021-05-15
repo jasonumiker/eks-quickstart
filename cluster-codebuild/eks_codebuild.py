@@ -17,6 +17,15 @@ import os
 
 from codebuild_custom_resource import CodeBuildObjectResource
 
+# The owner of the GitHub repo to pull from and set up a GitOps webhook against
+github_owner = "jasonumiker"
+
+# The GitHub repo to pull from and set up a GitOps webhook against
+github_repo="eks-quickstart"
+
+# The GitHub branch to pull from and set up a GitOps webhook against
+github_branch = "main"
+
 class EKSCodeBuildStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
@@ -34,11 +43,11 @@ class EKSCodeBuildStack(core.Stack):
 
         # We only want to fire on the master branch and if there is a change in the dockerbuild folder
         git_hub_source = codebuild.Source.git_hub(
-            owner="jasonumiker",
-            repo="eks-quickstart",
+            owner=github_owner,
+            repo=github_repo,
             webhook=True,
             webhook_filters=[
-                codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH).and_branch_is("main").and_file_path_is("cluster-bootstrap/*")
+                codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH).and_branch_is(github_branch).and_file_path_is("cluster-bootstrap/*")
             ]
         )
 

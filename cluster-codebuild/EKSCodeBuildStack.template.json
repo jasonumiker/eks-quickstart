@@ -197,7 +197,7 @@
     "CDKMetadata": {
       "Type": "AWS::CDK::Metadata",
       "Properties": {
-        "Analytics": "v2:deflate64:H4sIAAAAAAAAAy2MXQrCMBCEz9L3dEtRQd+EXiDUE8RNxG3TLOQHKSF31zQ+zTd8zIxwO8PY3dUn9KjXISN7A/kRFa5iYheiTxjF9HKzCZw8mso/oSkSuyLqMJPaIM9sD3mkZEu419qoCGRtnomshiw9L6a9/rGUIuQe3+yGE1zh0i2BqPfJRdoMzC2/NHGBIKwAAAA="
+        "Analytics": "v2:deflate64:H4sIAAAAAAAAAy2MXQqDMBCEz+J7XJW20MeCFxA9gd2kdP3JQrKhSMjd25g+zTd8zHTQtVdoq8f88TXqtYnIzkCcZMZV9Wy9uICi+pcdjefg0GT+CU1CbJPKw0jzDnHk7ZRnDrwRHrkWSgpZm2egTUMcHC+mvP4xpaSGQ95smwvc4VYtnqh2wQrtBsaSX5zQuV+tAAAA"
       },
       "Metadata": {
         "aws:cdk:path": "EKSCodeBuildStack/CDKMetadata/Default"

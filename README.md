@@ -1,21 +1,25 @@
-# EKS Quickstart
+# EKS CDK Quick Start (in Python)
 
-This project is an example of how you can combine the AWS Cloud Development Kit (CDK) and the AWS Elastic Kubernetes Serivce (EKS) to quickly deploy a more complete and "production ready" Kubernetes environment on AWS.
+This Quick Start is a reference architecture and implementation of how you can use the Cloud Development Kit (CDK) to orchestrate the Elastic Kubernetes Serivce (EKS) to quickly deploy a more complete and "production ready" Kubernetes environment on AWS.
 
 I describe it a bit more in a recent blog post - https://jason-umiker.medium.com/automating-the-provisioning-of-a-production-ready-kubernetes-cluster-with-aws-eks-cdk-b1f0e8a12723
 
-## What does this QuickStart create for you:
+## What does this Quick Start create for you:
 
 1. An appropriate VPC (/22 CDIR w/1024 IPs by default - though you can edit this in `eks_cluster.py`) with public and private subnets across three availabilty zones.
-    1. Alternatively, just flip `create_new_vpc` to `False` and then specify the name of your VPC under `existing_vpc_name` in `eks_cluster.py`
+    1. Alternatively, just flip `create_new_vpc` to `False` and then specify the name of your VPC under `existing_vpc_name` in `eks_cluster.py` to use an existing VPC. CDK will automatically work out which subnets are public and which are private and deploy to the private ones.
+        1. Note that if you do this you'll also have to tag your subnets as per https://aws.amazon.com/premiumsupport/knowledge-center/eks-vpc-subnet-discovery/
 1. A new EKS cluster with:
     1. A dedicated new IAM role to create it from. The role that creates the cluster is a permanent, and rather hidden, full admin role that doesn't appear in nor is subject to the aws-auth config map. So, you want a dedicated role explicity for that purpose like CDK does for you here that you can then restrict access to assume unless you need it (e.g. you lock yourself out of the cluster with by making a mistake in the aws-auth configmap).
+        1. Alternatively, you can specify an existing role ARN to make the administrator by flipping to `False` in `create_new_cluster_admin_role` and then putting the arn to use in `existing_role_arn` at the top of eks_cluster.py.
     1. A new Managed Node Group with 3 x m5.large instances spread across 3 Availability Zones.
         1. You can change the instance type and quantity by changing `eks_node_quantity` and/or `eks_node_type` at the top of `cluster-bootstrap/eks-clustery.py`.
     3. All control plane logging to CloudWatch Logs enabled (defaulting to 1 month's retention within CloudWatch Logs).
 1. The AWS Load Balancer Controller (https://kubernetes-sigs.github.io/aws-load-balancer-controller) to allow you to seamlessly use ALBs for Ingress and NLB for Services.
 1. External DNS (https://github.com/kubernetes-sigs/external-dns) to allow you to automatically create/update Route53 entries to point your 'real' names at your Ingresses and Services.
 1. A new managed Amazon Elasticsearch Domain behind a private VPC endpoint as well as an aws-for-fluent-bit DaemonSet (https://github.com/aws/aws-for-fluent-bit) to ship all your container logs there - including enriching them with the Kubernetes metadata using the kubernetes fluent-bit filter.
+    1. Note that this provisions a single node 10GB managed Elasticsearch Domain suitable for a proof of concept. To use this in produciton you'll likely need to edit the `es_capacity` section of `eks_cluster.py` to scale this out from a capacity and availability perspective. For more information see https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/sizing-domains.html.
+    1. Note that this provisions an Elasticsearch and Kibana that does not have a login/password configured. It is secured instead by network access controlled by it being in a private subnet and its security group. While this is acceptable for the creation of a Proof of Concept (POC) environment, for production use you'd want to consider implementing Cognito to control user access to Kibana - https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/fgac.html#fgac-walkthrough-iam
 1. (Temporarily until the AWS Managed Prometheus/Grafana are available) The kube-prometheus Operator (https://github.com/prometheus-operator/kube-prometheus) which deploys you a Prometheus on your cluster that will collect all your cluster metrics as well as a Grafana to visualise them.
     1. TODO: Add some initial alerts for sensible common items in the cluster via Prometheus/Alertmanager
 1. The AWS EBS CSI Driver (https://github.com/kubernetes-sigs/aws-ebs-csi-driver). Note that new development on EBS functionality has moved out of the Kubernetes mainline to this externalised CSI driver.
@@ -42,7 +46,8 @@ What makes CDK uniquely good when it comes to our EKS Quickstart is:
 
 ## Getting started
 
-You can either deploy this from your machine or leverge CodeBuild. 
+You can either deploy this from your machine or leverge CodeBuild. The advantage of using CodeBuild is it also sets up a 'GitOps' approach where when you merge changes to
+the cluster-bootstrap folder it'll (re)run `cdk deploy` for you. This means that to update the cluster you just change this file and merge. 
 
 ###  Deploy from CodeBuild
 To use the CodeBuild CloudFormation Template:
@@ -57,9 +62,13 @@ To use the CodeBuild CloudFormation Template:
 **_NOTE:_** This also enables a GitOps pattern where changes to the cluster-bootrap folder on the branch mentioned (main by default) will re-trigger this CodeBuild to do another `cdk deploy` via web hook.
 
 ### Deploy from your laptop
+
+Alternatively, you can deploy from any machine (your laptop, a bastion EC2 instance, etc.).
+
 There are some prerequsistes you likely will need to install on the machine doing your environment bootstrapping including Node, Python, the AWS CLI, the CDK, fluxctl and Helm
 
 #### Pre-requisites - Ubuntu 20.04.2 LTS (including via Windows 10's WSL)
+
 Run `sudo ./ubuntu-prepreqs.sh`
 
 #### Pre-requisites - Mac
@@ -81,7 +90,6 @@ Run `sudo ./ubuntu-prepreqs.sh`
 7. (Only required the first time you use the CDK in this account) Run `cdk bootstrap` to create the S3 bucket where it puts the CDK puts its artifacts
 8. (Only required the first time ES in VPC mode is used in this account) Run `aws iam create-service-linked-role --aws-service-name es.amazonaws.com`
 9. Run `cdk deploy --require-approval never`
-10. (Temporary until it is added to our Helm Chart - PR open) Run `kubectl edit configmap fluentbit-aws-for-fluent-bit --namespace=kube-system` and add the following to the bottom `Replace_Dots On`
 
 ### Finish setup of Flux for GitOps deployment of gatekeeper-policies
 
@@ -94,14 +102,13 @@ fluxctl and the required access is set up on the Bastion - if you have deployed 
 1. Take the SSH key that has been ouput and add it to GitHub by following these instructions - https://docs.github.com/en/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account
 1. (Optional) If you don't want to wait up to 5 minutes for Flux to sync you can run `fluxctl sync --k8s-fwd-ns kube-system`
 
-## Deploy and set up a Bastion based on an EC2 instance running Code Server
+TODO: Update this to use Flux v2 which should GA soon.
 
-If you set `deploy_bastion` to `True` in `eks_cluster.py` then the template will deploy an EC2 instance running [Code Server](https://github.com/cdr/code-server) which is Visual Studio Code but running in your browser.
+## Deploy and set up a Bastion based on an EC2 instance accessed securely via Systems Manager's Session Manager
 
-So there are two ways to reach your Bastion and, through it, your EKS cluster:
+If you set `deploy_bastion` to `True` in `eks_cluster.py` then the template will deploy an EC2 instance with all the tools to manage your cluster.
 
-### Via Systems Manager Session Manager
-
+To access this bastion:
 1. Go to the Systems Manager Server in the AWS Console
 1. Go to Managed Instances on the left hand navigation pane
 1. Select the instance with the name `EKSClusterStack/CodeServerInstance`
@@ -109,21 +116,10 @@ So there are two ways to reach your Bastion and, through it, your EKS cluster:
 1. You need to run `sudo bash` to get to root's profile where we've set up kubectl
 1. Run `kubectl get nodes` to see that all the tools are there and set up for you.
 
-### Via the code-server (VSCode in a browser) server on the Bastion
-
-The stack will have an Output with the address to the Bastion and the password for the web interface defaults to the Instance ID of the Bastion Instance (which you can get from the EC2 Console).
-
-**_NOTE:_** Since this defaults to HTTP rather than HTTPS to accomodate accounts without a public Route 53 Zone and associated certificates that means that modern browsers won't allow you to paste with Ctrl-V. You can, however, paste with shift-insert (insert = fn + return on a Mac so shift-fn-return on a Mac to paste).
-
-Here are a few things to familiarise yourself with the Bastion:
-
-- Click the three dashes (I call it the hambuger menu) in the upper left corrner then click `Terminal` and then `New Terminal`.
-- Run `kubectl get nodes` and see that we've already installed the tools for you and run the `aws eks update-kubeconfig` and it is all working
-- Click the three dashes in the upper left then click View then Command Palette. In that box type Browser Preview and choose `Browser Preview: Open Preview`. This browser is running on the Instance in the private VPC and you can use this browser to reach Kibana and Grafana etc.
 
 ## Set up your Client VPN to access the environment
 
-If you set `deploy_vpn` to `True` in `eks_cluster.py` then the template will deploy a Client VPN.
+If you set `deploy_vpn` to `True` in `eks_cluster.py` then the template will deploy a Client VPN so that you can securely access the cluster's private VPC subnets from any machine. You'll need this to be able to reach the Kibana for your logs and Grafana for your metrics by default (unless you are using an existing VPC where you have already arranged such connectivity)
 
 Note that you'll also need to create client and server certificates and upload them to ACM by following these instructions - https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html#mutual - and update `ekscluster.py` with the certificate ARNs for this to work.
 
@@ -205,8 +201,4 @@ Each of our add-ons are deployed via Helm Charts and are explicit about the char
 
 To upgrade the chart version update the chart version to the upstream version you see there, save it and then do a `cdk deploy`.
 
-**NOTE:** I was thinking about parametising this to the top of `cluster-bootstrap/eks_cluster.py` but it is possible as the Chart versions change that the values you have to specify might also change. As such I have not done so as a reminder that this change might require a bit of testing and research rather than just popping a new version number in and expecting it'll work
-
-## Outstanding Issues
-
-* Investigate replacing the current instance ID password for the VS Code on the Bastion with something more secure such as generating a longer string and storing it in Secrets Manager - or drop it alltogether in lieu of just the Client VPN and/or Systems Manager Session Manager to the Bastion.
+**NOTE:** While we were thinking about parametising this to the top of `cluster-bootstrap/eks_cluster.py`, it is possible as the Chart versions change that the values you have to specify might also change. As such, we have not done so as a reminder that this change might require a bit of research and testing rather than just popping a new version number in and expecting it'll work.
