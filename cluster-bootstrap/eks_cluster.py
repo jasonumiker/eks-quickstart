@@ -677,31 +677,17 @@ class EKSClusterStack(core.Stack):
             fluentbit_service_account.add_to_policy(iam.PolicyStatement.from_json(fluentbit_policy_statement_json_1))
             es_domain.grant_write(fluentbit_service_account)
 
-            # For more info check out https://github.com/aws/eks-charts/tree/master/stable/aws-for-fluent-bit
+            # For more info check out https://github.com/fluent/helm-charts/tree/main/charts/fluent-bit
             fluentbit_chart = eks_cluster.add_helm_chart(
                 "fluentbit",
-                chart="aws-for-fluent-bit",
-                version="0.1.6",
-                release="fluentbit",
-                repository="https://aws.github.io/eks-charts",
+                chart="fluent-bit",
+                version="0.15.8",
+                release="fluent-bit",
+                repository="https://fluent.github.io/helm-charts",
                 namespace="kube-system",
                 values={
-                    "serviceAccount": {
-                        "create": False,
-                        "name": "fluentbit"
-                    },
-                    "cloudWatch": {
-                        "enabled": False
-                    },
-                    "firehose": {
-                        "enabled": False
-                    },
-                    "kinesis": {
-                        "enabled": False
-                    },
-                    "elasticsearch": {
-                        "awsRegion": self.region,
-                        "host": es_domain.domain_endpoint
+                    "config": {
+                        "outputs": "[OUTPUT]\n    Name            es\n    Match           *\n    AWS_Region      "+self.region+"\n    AWS_Auth        On\n    Host            "+es_domain.domain_endpoint+"\n    Port            443\n    TLS             On\n    Replace_Dots    On\n"
                     }
                 }
             )
