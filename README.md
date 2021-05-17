@@ -66,7 +66,7 @@ Run `sudo ./ubuntu-prepreqs.sh`
 
 1. Install Homebrew (https://brew.sh/)
 1. Run `./mac-prereqs.sh`
-1. Edit your `~/.zshrc` and/or your `~/.bash_profile` to put /usr/local/bin at the start of your PATH statement so that the brew things installed take precendence over the built-in often outdated options like python2.
+1. Edit your `~/.zprofile` and/or your `~/.bash_profile` to put `$(brew --prefix)/opt/python/libexec/bin` at the start of your PATH statement so that the brew things installed take precendence over the built-in often outdated options like python2. You can do this with a `export PATH=/opt/homebrew/opt/python/libexec/bin:$PATH`.
 
 #### Deploy from CDK locally
 
