@@ -4,8 +4,6 @@
 # Install python - note you'll need to put /usr/local/bin higher in your PATH
 # in .zschrc or .bash_profile instead of the built-in python2 in /usr/bin
 brew install python
-ln -s /usr/local/bin/python3 /usr/local/bin/python
-ln -s /usr/local/bin/pip3 /usr/local/bin/pip
 # Install Node & NPM
 brew install nodejs
 # Install kubectl
